@@ -1,26 +1,31 @@
-// src/screens/HomeScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { supabase } from '../services/supabaseClient';
 import { generateRoadmap } from '../services/aiService';
-import { Roadmap } from '../types/roadmap';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
 
-interface HomeScreenProps {
-  navigation: any;
-}
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
+export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     if (!query.trim()) return;
-    
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      Alert.alert('Error', 'Debes iniciar sesión para generar rutas');
+      return;
+    }
+
     setLoading(true);
     try {
-      const roadmapData: Roadmap = await generateRoadmap(query);
+      const roadmapData = await generateRoadmap(query, session.access_token);
       navigation.navigate('Roadmap', { roadmap: roadmapData });
-    } catch (error) {
-      alert('Hubo un error al generar la ruta. Intenta de nuevo.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Hubo un error al generar la ruta. Intenta de nuevo.');
       console.error(error);
     } finally {
       setLoading(false);
@@ -29,7 +34,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🗺️ AlphaStudio AI</Text>
+      <Text style={styles.title}>AlphaStudio AI</Text>
       <Text style={styles.subtitle}>Tu ruta de aprendizaje inteligente y visual</Text>
 
       <TextInput
@@ -40,8 +45,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onChangeText={setQuery}
       />
 
-      <TouchableOpacity 
-        style={styles.button} 
+      <TouchableOpacity
+        style={styles.button}
         onPress={handleGenerate}
         disabled={loading}
       >

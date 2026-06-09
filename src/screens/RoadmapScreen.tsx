@@ -1,11 +1,14 @@
-// src/screens/RoadmapScreen.tsx
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
-import { Roadmap, RoadmapNode, Resource } from '../types/roadmap';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
+import { RoadmapNode, Resource } from '../types/roadmap';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function RoadmapScreen({ route, navigation }: any) {
-  const { roadmap } = route.params as { roadmap: Roadmap };
+type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
+
+export default function RoadmapScreen({ route }: Props) {
+  const { roadmap } = route.params;
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(err => console.error("No se pudo abrir el enlace:", err));
@@ -16,6 +19,7 @@ export default function RoadmapScreen({ route, navigation }: any) {
       case 'youtube': return 'logo-youtube';
       case 'course': return 'school';
       case 'documentation': return 'book';
+      case 'google': return 'logo-google';
       default: return 'globe';
     }
   };
@@ -25,6 +29,7 @@ export default function RoadmapScreen({ route, navigation }: any) {
       case 'youtube': return '#FF0000';
       case 'course': return '#A855F7';
       case 'documentation': return '#3B82F6';
+      case 'google': return '#4285F4';
       default: return '#6B7280';
     }
   }
@@ -51,7 +56,7 @@ export default function RoadmapScreen({ route, navigation }: any) {
               <View style={styles.resourcesContainer}>
                 <Text style={styles.resourcesTitle}>Recursos:</Text>
                 {node.data.resources.map((res: Resource, i: number) => (
-                  <TouchableOpacity key={i} style={styles.resourceButton} onPress={() => openLink(res.url)}>
+                  <TouchableOpacity key={res.id ?? `res-${i}`} style={styles.resourceButton} onPress={() => openLink(res.url)}>
                     <Ionicons name={getIconName(res.type) as any} size={16} color={getColorType(res.type)} />
                     <Text style={styles.resourceText}>{res.title}</Text>
                     <Ionicons name="open-outline" size={14} color="#94a3b8" />

@@ -1,22 +1,22 @@
-// src/services/aiService.ts
 import { Roadmap } from '../types/roadmap';
+import { parseRoadmap } from '../utils/roadmapValidator';
 
-const GROQ_API_KEY = (process as any).env?.EXPO_PUBLIC_GROQ_API_KEY || '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/groq-proxy`;
 
-export const generateRoadmap = async (userQuery: string): Promise<Roadmap> => {
-    const prompt = `
-    Eres un experto creando rutas de aprendizaje visuales. 
+export const generateRoadmap = async (userQuery: string, accessToken: string): Promise<Roadmap> => {
+  const prompt = `
+    Eres un experto creando rutas de aprendizaje visuales.
     El usuario quiere aprender sobre: "${userQuery}".
-    
+
     REGLAS IMPORTANTES:
     1. Genera un roadmap CORTO de MAXIMO 5 nodos (subtemas). No generes más.
     2. Las descripciones de cada nodo deben ser de MAXIMO 15 palabras.
     3. Para los recursos, NO inventes URLs de videos específicos. Genera enlaces de búsqueda de YouTube o Google.
-    4. Asigna posiciones lógicas en x e y (ej: nodo1 en x:0, nodo2 en x:300, etc., y:100).
-    
-    Ejemplo de recurso válido: 
+
+    Ejemplo de recurso válido:
     {"title": "YouTube", "url": "https://www.youtube.com/results?search_query=aprender+${userQuery}", "type": "youtube"}
-    
+
     El JSON debe cumplir estrictamente con esta estructura:
     {
       "title": "string",
@@ -24,7 +24,6 @@ export const generateRoadmap = async (userQuery: string): Promise<Roadmap> => {
       "nodes": [
         {
           "id": "string (ej: nodo1)",
-          "position": { "x": number, "y": number },
           "data": {
             "label": "string",
             "description": "string (max 15 palabras)",
@@ -37,21 +36,20 @@ export const generateRoadmap = async (userQuery: string): Promise<Roadmap> => {
         { "id": "string (ej: e1-2)", "source": "string (id origen)", "target": "string (id destino)" }
       ]
     }
-    
+
     Devuelve SOLO el JSON puro, sin markdown (sin \`\`\`), sin explicaciones.
   `;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        // Usamos Llama 3, rapidísimo y gratuito en Groq
+        prompt,
         model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
         temperature: 0.5,
       }),
     });
@@ -63,15 +61,11 @@ export const generateRoadmap = async (userQuery: string): Promise<Roadmap> => {
     }
 
     const data = await response.json();
-    
-    // Extraer el texto de la respuesta (formato OpenAI)
-    let content = data.choices[0].message.content;
 
-    // Limpiar el formato markdown que a veces la IA devuelve
+    let content = data.choices[0].message.content;
     content = content.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    const roadmap: Roadmap = JSON.parse(content);
-    return roadmap;
+    return parseRoadmap(content);
   } catch (error: any) {
     console.error('Error completo generando roadmap:', error);
     throw new Error(error.message || 'No se pudo generar el roadmap');
