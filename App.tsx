@@ -7,6 +7,8 @@ import type { RootStackParamList } from './src/types/navigation';
 
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import RoadmapScreen from './src/screens/RoadmapScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -41,6 +43,16 @@ export default function App() {
               name="Home"
               component={HomeScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="History"
+              component={HistoryScreen}
+              options={{ title: 'Historial', headerTintColor: '#38bdf8', headerStyle: { backgroundColor: '#0f172a' } }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: 'Perfil', headerTintColor: '#38bdf8', headerStyle: { backgroundColor: '#0f172a' } }}
             />
             <Stack.Screen
               name="Roadmap"
