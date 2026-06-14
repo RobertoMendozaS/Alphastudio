@@ -1,14 +1,21 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Share } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Share, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { RoadmapNode, Resource } from '../types/roadmap';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoadmapStore } from '../store/roadmapStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
 export default function RoadmapScreen({ route }: Props) {
-  const { roadmap } = route.params;
+  const routeRoadmap = route.params.roadmap;
+  const { currentRoadmap, setCurrentRoadmap, toggleNodeCompleted, saveCurrentRoadmapLocal } = useRoadmapStore();
+  const roadmap = currentRoadmap ?? routeRoadmap;
+
+  useEffect(() => {
+    setCurrentRoadmap(routeRoadmap);
+  }, [routeRoadmap, setCurrentRoadmap]);
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(err => console.error("No se pudo abrir el enlace:", err));
@@ -34,6 +41,11 @@ export default function RoadmapScreen({ route }: Props) {
     }
   }
 
+  const handleSaveLocal = async () => {
+    await saveCurrentRoadmapLocal();
+    Alert.alert('Ruta guardada', 'La ruta se guardó localmente en este dispositivo.');
+  };
+
   const handleShare = async () => {
     try {
       const message = `¡Mira esta ruta de aprendizaje: ${roadmap.title}!\n\n${roadmap.description}\n\nTemas:\n${roadmap.nodes.map((n: RoadmapNode, i: number) => `${i + 1}. ${n.data.label}`).join('\n')}\n\n¡Generado con AlphaStudio AI!`;
@@ -50,9 +62,14 @@ export default function RoadmapScreen({ route }: Props) {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.headerRow}>
         <Text style={styles.roadmapTitle}>{roadmap.title}</Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Ionicons name="share-social-outline" size={24} color="#38bdf8" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleSaveLocal} style={styles.shareBtn}>
+            <Ionicons name="save-outline" size={24} color="#38bdf8" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+            <Ionicons name="share-social-outline" size={24} color="#38bdf8" />
+          </TouchableOpacity>
+        </View>
       </View>
       <Text style={styles.roadmapDesc}>{roadmap.description}</Text>
 
@@ -67,7 +84,22 @@ export default function RoadmapScreen({ route }: Props) {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{node.data.label}</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>{node.data.label}</Text>
+                <TouchableOpacity
+                  style={[styles.completeBtn, node.data.isCompleted && styles.completeBtnDone]}
+                  onPress={() => toggleNodeCompleted(node.id)}
+                >
+                  <Ionicons
+                    name={node.data.isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={18}
+                    color={node.data.isCompleted ? '#22c55e' : '#94a3b8'}
+                  />
+                  <Text style={[styles.completeText, node.data.isCompleted && styles.completeTextDone]}>
+                    {node.data.isCompleted ? 'Completado' : 'Marcar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.cardDesc}>{node.data.description}</Text>
 
               <View style={styles.resourcesContainer}>
@@ -93,7 +125,8 @@ const styles = StyleSheet.create({
   contentContainer: { padding: 20, paddingBottom: 50 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 },
   roadmapTitle: { flex: 1, fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  shareBtn: { padding: 8, marginLeft: 10, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
+  headerActions: { flexDirection: 'row', gap: 8, marginLeft: 10 },
+  shareBtn: { padding: 8, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
   roadmapDesc: { fontSize: 14, color: '#94a3b8', marginBottom: 30 },
   pathContainer: { marginLeft: 10 },
   verticalLine: { position: 'absolute', left: 15, top: 10, bottom: 10, width: 2, backgroundColor: '#334155' },
@@ -102,7 +135,12 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5 },
   stepNumber: { position: 'absolute', fontSize: 10, fontWeight: 'bold', color: '#fff' },
   card: { flex: 1, backgroundColor: '#1e293b', borderRadius: 12, padding: 16, marginLeft: 15, borderWidth: 1, borderColor: '#334155' },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10 },
+  cardTitle: { flex: 1, fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  completeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: '#0f172a' },
+  completeBtnDone: { backgroundColor: '#052e16' },
+  completeText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  completeTextDone: { color: '#22c55e' },
   cardDesc: { fontSize: 13, color: '#94a3b8', marginBottom: 12, lineHeight: 18 },
   resourcesContainer: { borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 10 },
   resourcesTitle: { color: '#64748b', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textTransform: 'uppercase' },

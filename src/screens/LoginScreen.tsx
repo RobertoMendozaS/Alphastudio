@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { signIn, signUp, signInWithGoogle } from '../services/authService';
+import { useAuthStore } from '../store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -12,6 +13,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const loginDemo = useAuthStore((state) => state.loginDemo);
 
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
@@ -105,6 +107,11 @@ export default function LoginScreen({ navigation }: Props) {
         <Ionicons name="logo-google" size={20} color="#0f172a" style={styles.googleIcon} />
         <Text style={styles.googleButtonText}>Continuar con Google</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.demoButton} onPress={loginDemo} disabled={loading}>
+        <Ionicons name="construct-outline" size={20} color="#38bdf8" style={styles.googleIcon} />
+        <Text style={styles.demoButtonText}>Entrar en modo demo</Text>
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -189,6 +196,40 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: '#0f172a',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  demoButton: {
+    marginTop: 12,
+    backgroundColor: '#1e293b',
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  demoButtonText: {
+    color: '#38bdf8',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  demoButton: {
+    marginTop: 12,
+    backgroundColor: '#1e293b',
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  demoButtonText: {
+    color: '#38bdf8',
     fontSize: 16,
     fontWeight: 'bold',
   },

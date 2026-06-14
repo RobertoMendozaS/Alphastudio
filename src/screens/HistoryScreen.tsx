@@ -2,21 +2,40 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../services/supabaseClient';
 import { getRoadmapHistory, getRoadmapById, deleteRoadmap, rowToRoadmap, RoadmapSummary } from '../services/roadmapService';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import type { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../store/authStore';
+import { useRoadmapStore } from '../store/roadmapStore';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'History'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export default function HistoryScreen({ navigation }: Props) {
   const [roadmaps, setRoadmaps] = useState<RoadmapSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const isDemo = useAuthStore((state) => state.isDemo);
+  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap } = useRoadmapStore();
 
   const loadHistory = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
     setLoading(true);
+
+    if (isDemo) {
+      await loadLocalRoadmaps();
+      setLoading(false);
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await getRoadmapHistory(session.user.id);
       setRoadmaps(data);
@@ -25,7 +44,7 @@ export default function HistoryScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDemo, loadLocalRoadmaps]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadHistory);
@@ -41,6 +60,7 @@ export default function HistoryScreen({ navigation }: Props) {
         return;
       }
       const roadmap = rowToRoadmap(row);
+      setCurrentRoadmap(roadmap);
       navigation.navigate('Roadmap', { roadmap });
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -78,6 +98,80 @@ export default function HistoryScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#38bdf8" />
+      </View>
+    );
+  }
+
+  if (isDemo) {
+    if (localRoadmaps.length === 0) {
+      return (
+        <View style={styles.center}>
+          <Ionicons name="book-outline" size={64} color="#334155" />
+          <Text style={styles.emptyTitle}>Sin rutas locales</Text>
+          <Text style={styles.emptySubtitle}>Las rutas guardadas en modo demo aparecerán aquí</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.container}>
+        <FlatList
+          data={localRoadmaps}
+          keyExtractor={(item, index) => `${item.title}-${index}`}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => {
+                setCurrentRoadmap(item);
+                navigation.navigate('Roadmap', { roadmap: item });
+              }}
+            >
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+                <Text style={styles.cardDate}>Guardado local</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    );
+  }
+
+  if (isDemo) {
+    if (localRoadmaps.length === 0) {
+      return (
+        <View style={styles.center}>
+          <Ionicons name="book-outline" size={64} color="#334155" />
+          <Text style={styles.emptyTitle}>Sin rutas locales</Text>
+          <Text style={styles.emptySubtitle}>Las rutas guardadas en modo demo aparecerán aquí</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.container}>
+        <FlatList
+          data={localRoadmaps}
+          keyExtractor={(item, index) => `${item.title}-${index}`}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => {
+                setCurrentRoadmap(item);
+                navigation.navigate('Roadmap', { roadmap: item });
+              }}
+            >
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+                <Text style={styles.cardDate}>Guardado local</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
       </View>
     );
   }

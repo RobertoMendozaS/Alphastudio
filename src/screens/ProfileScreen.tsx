@@ -1,103 +1,46 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
-import { supabase } from '../services/supabaseClient';
-import { signOut, performCheckIn, getStreak } from '../services/authService';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../store/authStore';
+import { useRoadmapStore } from '../store/roadmapStore';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
 export default function ProfileScreen({ navigation }: Props) {
-  const [userEmail, setUserEmail] = useState('');
-  const [streak, setStreak] = useState(0);
-  const [checkedInToday, setCheckedInToday] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [checkingIn, setCheckingIn] = useState(false);
+  const { user, isDemo, logout } = useAuthStore();
+  const currentRoadmap = useRoadmapStore((state) => state.currentRoadmap);
 
-  const loadProfile = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
-    setUserEmail(session.user.email ?? '');
-
-    try {
-      const currentStreak = await getStreak(session.user.id);
-      setStreak(currentStreak);
-      setCheckedInToday(currentStreak > 0);
-    } catch {
-      setStreak(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadProfile);
-    return unsubscribe;
-  }, [navigation, loadProfile]);
-
-  const handleCheckIn = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
-    setCheckingIn(true);
-    try {
-      const success = await performCheckIn(session.user.id);
-      if (success) {
-        const newStreak = await getStreak(session.user.id);
-        setStreak(newStreak);
-        setCheckedInToday(true);
-        Alert.alert('¡Check-in completado!', `Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`);
-      } else {
-        Alert.alert('Ya hiciste check-in hoy', 'Vuelve mañana para mantener tu racha.');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setCheckingIn(false);
-    }
-  };
+  const completedNodes = currentRoadmap?.nodes.filter((node) => node.data.isCompleted).length ?? 0;
+  const totalNodes = currentRoadmap?.nodes.length ?? 0;
+  const progressPercent = totalNodes > 0 ? Math.round((completedNodes / totalNodes) * 100) : 0;
+  const userEmail = user?.email ?? 'Usuario sin correo';
 
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
-      if (confirm) {
-        try {
-          await signOut();
-        } catch (error: any) {
+    const executeLogout = async () => {
+      try {
+        await logout();
+      } catch (error: any) {
+        if (Platform.OS === 'web') {
           window.alert(error.message);
+        } else {
+          Alert.alert('Error', error.message);
         }
       }
-    } else {
-      Alert.alert(
-        'Cerrar sesión',
-        '¿Estás seguro de que quieres cerrar sesión?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Cerrar sesión',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await signOut();
-              } catch (error: any) {
-                Alert.alert('Error', error.message);
-              }
-            },
-          },
-        ]
-      );
-    }
-  };
+    };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#38bdf8" />
-      </View>
-    );
-  }
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
+      if (confirm) executeLogout();
+      return;
+    }
+
+    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: executeLogout },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -106,26 +49,16 @@ export default function ProfileScreen({ navigation }: Props) {
           <Ionicons name="person" size={40} color="#38bdf8" />
         </View>
         <Text style={styles.email}>{userEmail}</Text>
+        {isDemo ? <Text style={styles.demoBadge}>Modo demo sin Supabase</Text> : null}
       </View>
 
-      <View style={styles.streakCard}>
-        <Ionicons name="flame" size={32} color="#f97316" />
-        <Text style={styles.streakCount}>{streak}</Text>
-        <Text style={styles.streakLabel}>día{streak !== 1 ? 's' : ''} consecutivo{streak !== 1 ? 's' : ''}</Text>
-
-        <TouchableOpacity
-          style={[styles.checkInBtn, checkedInToday && styles.checkInBtnDone]}
-          onPress={handleCheckIn}
-          disabled={checkingIn || checkedInToday}
-        >
-          {checkingIn ? (
-            <ActivityIndicator color="#0f172a" />
-          ) : (
-            <Text style={styles.checkInBtnText}>
-              {checkedInToday ? 'Check-in realizado' : 'Hacer check-in diario'}
-            </Text>
-          )}
-        </TouchableOpacity>
+      <View style={styles.progressCard}>
+        <Ionicons name="analytics-outline" size={32} color="#38bdf8" />
+        <Text style={styles.progressCount}>{progressPercent}%</Text>
+        <Text style={styles.progressLabel}>progreso de la ruta actual</Text>
+        <Text style={styles.progressDetail}>
+          {completedNodes} de {totalNodes} módulos completados
+        </Text>
       </View>
 
       <View style={styles.menu}>
@@ -146,7 +79,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 20 },
-  center: { flex: 1, backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
   header: { alignItems: 'center', marginTop: 20, marginBottom: 30 },
   avatar: {
     width: 80,
@@ -160,7 +92,8 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   email: { fontSize: 16, color: '#fff', fontWeight: '500' },
-  streakCard: {
+  demoBadge: { marginTop: 8, color: '#38bdf8', fontSize: 13 },
+  progressCard: {
     backgroundColor: '#1e293b',
     borderRadius: 16,
     padding: 24,
@@ -169,18 +102,9 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     marginBottom: 24,
   },
-  streakCount: { fontSize: 48, fontWeight: 'bold', color: '#f97316', marginTop: 4 },
-  streakLabel: { fontSize: 14, color: '#94a3b8', marginBottom: 16 },
-  checkInBtn: {
-    backgroundColor: '#38bdf8',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-  },
-  checkInBtnDone: { backgroundColor: '#334155' },
-  checkInBtnText: { color: '#0f172a', fontSize: 16, fontWeight: 'bold' },
+  progressCount: { fontSize: 48, fontWeight: 'bold', color: '#38bdf8', marginTop: 4 },
+  progressLabel: { fontSize: 14, color: '#94a3b8', marginBottom: 8 },
+  progressDetail: { fontSize: 13, color: '#64748b' },
   menu: { marginBottom: 24 },
   menuItem: {
     flexDirection: 'row',
