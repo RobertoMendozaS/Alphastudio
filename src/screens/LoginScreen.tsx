@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { signIn, signUp } from '../services/authService';
+import { signIn, signUp, signInWithGoogle } from '../services/authService';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -33,6 +34,17 @@ export default function LoginScreen({ navigation }: Props) {
       }
     } catch (error: any) {
       Alert.alert('Error de autenticación', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      Alert.alert('Error con Google', error.message);
     } finally {
       setLoading(false);
     }
@@ -81,6 +93,17 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.switchText}>
           {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
         </Text>
+      </TouchableOpacity>
+
+      <View style={styles.dividerContainer}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>o</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <TouchableOpacity style={styles.googleButton} onPress={handleGoogleAuth} disabled={loading}>
+        <Ionicons name="logo-google" size={20} color="#0f172a" style={styles.googleIcon} />
+        <Text style={styles.googleButtonText}>Continuar con Google</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -135,5 +158,38 @@ const styles = StyleSheet.create({
   switchText: {
     color: '#94a3b8',
     fontSize: 14,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  dividerText: {
+    color: '#94a3b8',
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  googleButton: {
+    backgroundColor: '#f8fafc',
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

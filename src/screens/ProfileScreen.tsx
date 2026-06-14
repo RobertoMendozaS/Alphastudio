@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
 import { supabase } from '../services/supabaseClient';
 import { signOut, performCheckIn, getStreak } from '../services/authService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -59,25 +59,36 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
-            }
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
+      if (confirm) {
+        try {
+          await signOut();
+        } catch (error: any) {
+          window.alert(error.message);
+        }
+      }
+    } else {
+      Alert.alert(
+        'Cerrar sesión',
+        '¿Estás seguro de que quieres cerrar sesión?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Cerrar sesión',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await signOut();
+              } catch (error: any) {
+                Alert.alert('Error', error.message);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   if (loading) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Share } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { RoadmapNode, Resource } from '../types/roadmap';
@@ -34,9 +34,26 @@ export default function RoadmapScreen({ route }: Props) {
     }
   }
 
+  const handleShare = async () => {
+    try {
+      const message = `¡Mira esta ruta de aprendizaje: ${roadmap.title}!\n\n${roadmap.description}\n\nTemas:\n${roadmap.nodes.map((n: RoadmapNode, i: number) => `${i + 1}. ${n.data.label}`).join('\n')}\n\n¡Generado con AlphaStudio AI!`;
+      await Share.share({
+        message,
+        title: roadmap.title,
+      });
+    } catch (error: any) {
+      console.error(error.message);
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.roadmapTitle}>{roadmap.title}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.roadmapTitle}>{roadmap.title}</Text>
+        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+          <Ionicons name="share-social-outline" size={24} color="#38bdf8" />
+        </TouchableOpacity>
+      </View>
       <Text style={styles.roadmapDesc}>{roadmap.description}</Text>
 
       <View style={styles.pathContainer}>
@@ -74,8 +91,10 @@ export default function RoadmapScreen({ route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
   contentContainer: { padding: 20, paddingBottom: 50 },
-  roadmapTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 8, textAlign: 'center' },
-  roadmapDesc: { fontSize: 14, color: '#94a3b8', marginBottom: 30, textAlign: 'center' },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 },
+  roadmapTitle: { flex: 1, fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  shareBtn: { padding: 8, marginLeft: 10, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
+  roadmapDesc: { fontSize: 14, color: '#94a3b8', marginBottom: 30 },
   pathContainer: { marginLeft: 10 },
   verticalLine: { position: 'absolute', left: 15, top: 10, bottom: 10, width: 2, backgroundColor: '#334155' },
   nodeRow: { flexDirection: 'row', marginBottom: 30, alignItems: 'flex-start' },
