@@ -1,195 +1,266 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { signIn, signUp, signInWithGoogle } from '../services/authService';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  ActivityIndicator, Animated, Easing,
+  KeyboardAvoidingView, Platform, StatusBar
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import { LinearGradient } from 'expo-linear-gradient';
+import { signIn } from '../services/authService';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+// ─────────────────────────────
+// Logo Alpha animado
+// ─────────────────────────────
+function AlphaLogo() {
+  const pulse = useRef(new Animated.Value(1)).current;
 
-export default function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
-
-  const handleAuth = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Por favor ingresa email y contraseña');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (isLogin) {
-        await signIn(email, password);
-      } else {
-        await signUp(email, password);
-        Alert.alert('¡Éxito!', 'Cuenta creada. Revisa tu email para confirmar o inicia sesión directamente.');
-        setIsLogin(true);
-      }
-    } catch (error: any) {
-      Alert.alert('Error de autenticación', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (error: any) {
-      Alert.alert('Error con Google', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 1800,
+          useNativeDriver: true
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true
+        }),
+      ])
+    ).start();
+  }, []);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.title}>AlphaStudio AI</Text>
-      <Text style={styles.subtitle}>
-        {isLogin ? 'Inicia sesión para continuar' : 'Crea tu cuenta gratuita'}
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#0f172a" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
-        <Text style={styles.switchText}>
-          {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
-        </Text>
-      </TouchableOpacity>
-
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>o</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <TouchableOpacity style={styles.googleButton} onPress={handleGoogleAuth} disabled={loading}>
-        <Ionicons name="logo-google" size={20} color="#0f172a" style={styles.googleIcon} />
-        <Text style={styles.googleButtonText}>Continuar con Google</Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+    <Animated.View style={{ transform: [{ scale: pulse }] }}>
+      <LinearGradient
+        colors={['#06b6d4', '#6366f1']}
+        style={{
+          width: 82,
+          height: 82,
+          borderRadius: 41,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 18
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 34, fontWeight: '900' }}>α</Text>
+      </LinearGradient>
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
+// ─────────────────────────────
+// Screen
+// ─────────────────────────────
+export default function LoginScreen() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 650,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+    ]).start();
+  }, []);
+
+  const handleAuth = async () => {
+    setLoading(true);
+    try {
+      await signIn(email, password);
+    } catch (e) {
+      console.log(e);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Fondo Alpha */}
+      <LinearGradient
+        colors={['#020617', '#0f172a', '#0c1a2e']}
+       
+      />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.wrapper}
+      >
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          {/* Logo */}
+          <View style={{ alignItems: 'center' }}>
+            <AlphaLogo />
+            <Text style={styles.title}>ALPHA</Text>
+            <Text style={styles.subtitle}>
+              Inicia sesión para continuar
+            </Text>
+          </View>
+
+          {/* Inputs */}
+          <View style={styles.inputBox}>
+            <Ionicons name="mail-outline" size={18} color="#475569" />
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor="#334155"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputBox}>
+            <Ionicons name="lock-closed-outline" size={18} color="#475569" />
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="#334155"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              style={styles.input}
+            />
+          </View>
+
+          {/* Botón */}
+          <TouchableOpacity
+            style={styles.btnWrap}
+            onPress={handleAuth}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#06b6d4', '#6366f1']}
+              style={styles.btn}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.btnText}>Iniciar sesión</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color="#fff"
+                    style={{ marginLeft: 8 }}
+                  />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Footer */}
+          <Text style={styles.footer}>
+            Alpha AI • Learning System
+          </Text>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+// ─────────────────────────────
+// Styles Alpha
+// ─────────────────────────────
+const styles = {
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#38bdf8',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#94a3b8',
-    marginBottom: 40,
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  button: {
-    backgroundColor: '#38bdf8',
-    width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  switchButton: {
-    marginTop: 20,
-  },
-  switchText: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginVertical: 20,
-  },
-  dividerLine: {
+
+
+  
+
+  wrapper: {
     flex: 1,
-    height: 1,
-    backgroundColor: '#334155',
-  },
-  dividerText: {
-    color: '#94a3b8',
-    paddingHorizontal: 10,
-    fontSize: 14,
-  },
-  googleButton: {
-    backgroundColor: '#f8fafc',
-    width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
+    paddingHorizontal: 22,
   },
-  googleIcon: {
-    marginRight: 10,
+
+  card: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 18,
+    padding: 22,
   },
-  googleButtonText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: 'bold',
+
+  title: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 6,
+    marginTop: 8,
   },
-});
+
+  subtitle: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0c1a2e',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    color: '#e2e8f0',
+    fontSize: 13,
+  },
+
+  btnWrap: {
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+
+  btnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+
+  footer: {
+    textAlign: 'center',
+    marginTop: 18,
+    color: '#475569',
+    fontSize: 11,
+  },
+} as const;
