@@ -8,6 +8,15 @@ import { Ionicons } from '@expo/vector-icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
+/**
+ * Pantalla de Perfil de Usuario.
+ * 
+ * Muestra la información del usuario (email), su racha actual (streak) y permite
+ * realizar un check-in diario para incrementar dicha racha. También proporciona
+ * acceso al historial de rutas y permite cerrar sesión.
+ *
+ * @param {Props} props - Propiedades de navegación de React Navigation.
+ */
 export default function ProfileScreen({ navigation }: Props) {
   const [userEmail, setUserEmail] = useState('');
   const [streak, setStreak] = useState(0);
@@ -15,6 +24,11 @@ export default function ProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
 
+  /**
+   * Carga los datos iniciales del perfil: sesión actual, email del usuario,
+   * y la racha (streak) actual. Verifica también si ya se realizó el check-in hoy.
+   * Utiliza useCallback para evitar recrear la función innecesariamente.
+   */
   const loadProfile = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
@@ -22,11 +36,12 @@ export default function ProfileScreen({ navigation }: Props) {
     setUserEmail(session.user.email ?? '');
 
     try {
-      const currentStreak = await getStreak(session.user.id);
-      setStreak(currentStreak);
-      setCheckedInToday(currentStreak > 0);
+      const { streak, checkedInToday } = await getStreak(session.user.id);
+      setStreak(streak);
+      setCheckedInToday(checkedInToday);
     } catch {
       setStreak(0);
+      setCheckedInToday(false);
     } finally {
       setLoading(false);
     }
@@ -37,6 +52,11 @@ export default function ProfileScreen({ navigation }: Props) {
     return unsubscribe;
   }, [navigation, loadProfile]);
 
+  /**
+   * Maneja el proceso de check-in diario.
+   * Llama a la API para registrar el check-in y actualiza el estado local
+   * reflejando la nueva racha si es exitoso, o muestra un mensaje de alerta.
+   */
   const handleCheckIn = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
@@ -45,28 +65,35 @@ export default function ProfileScreen({ navigation }: Props) {
     try {
       const success = await performCheckIn(session.user.id);
       if (success) {
-        const newStreak = await getStreak(session.user.id);
-        setStreak(newStreak);
+        const { streak } = await getStreak(session.user.id);
+        setStreak(streak);
         setCheckedInToday(true);
-        Alert.alert('¡Check-in completado!', `Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`);
+        Alert.alert('¡Check-in completado!', `Llevas ${streak} día${streak !== 1 ? 's' : ''} consecutivo${streak !== 1 ? 's' : ''}.`);
       } else {
         Alert.alert('Ya hiciste check-in hoy', 'Vuelve mañana para mantener tu racha.');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Ocurrió un error inesperado";
+      Alert.alert('Error', message);
     } finally {
       setCheckingIn(false);
     }
   };
 
+  /**
+   * Maneja el cierre de sesión del usuario.
+   * Muestra un cuadro de confirmación (adaptado para web o móvil) y
+   * cierra la sesión mediante Supabase Auth.
+   */
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
       const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
       if (confirm) {
         try {
           await signOut();
-        } catch (error: any) {
-          window.alert(error.message);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : "Error al cerrar sesión";
+          window.alert(message);
         }
       }
     } else {
@@ -81,8 +108,9 @@ export default function ProfileScreen({ navigation }: Props) {
             onPress: async () => {
               try {
                 await signOut();
-              } catch (error: any) {
-                Alert.alert('Error', error.message);
+              } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : "Error al cerrar sesión";
+                Alert.alert('Error', message);
               }
             },
           },

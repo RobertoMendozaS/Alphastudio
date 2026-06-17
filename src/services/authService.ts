@@ -36,7 +36,7 @@ export const performCheckIn = async (userId: string) => {
   return true;
 };
 
-export const getStreak = async (userId: string) => {
+export const getStreak = async (userId: string): Promise<{ streak: number; checkedInToday: boolean }> => {
   const { data, error } = await supabase
     .from('check_ins')
     .select('created_at')
@@ -44,7 +44,7 @@ export const getStreak = async (userId: string) => {
     .order('created_at', { ascending: false })
     .limit(30);
 
-  if (error || !data || data.length === 0) return 0;
+  if (error || !data || data.length === 0) return { streak: 0, checkedInToday: false };
 
   let streak = 1;
   const today = new Date();
@@ -54,6 +54,7 @@ export const getStreak = async (userId: string) => {
   lastCheckIn.setHours(0, 0, 0, 0);
 
   const diffDays = Math.round((today.getTime() - lastCheckIn.getTime()) / (1000 * 60 * 60 * 24));
+  const checkedInToday = diffDays === 0;
 
   if (diffDays <= 1) {
     for (let i = 1; i < data.length; i++) {
@@ -70,8 +71,8 @@ export const getStreak = async (userId: string) => {
         break;
       }
     }
-    return streak;
+    return { streak, checkedInToday };
   }
 
-  return 0;
+  return { streak: 0, checkedInToday: false };
 };
