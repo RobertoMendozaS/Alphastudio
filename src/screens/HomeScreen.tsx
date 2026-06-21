@@ -1,202 +1,436 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Animated, StatusBar, FlatList,
-  Easing, Dimensions, Platform,
+  View, Text, FlatList, TouchableOpacity,
+  StyleSheet, Alert, StatusBar,
+  Animated, Easing, Platform, TextInput,
+  RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../services/supabaseClient';
+import {
+  getRoadmapHistory, getRoadmapById, deleteRoadmap,
+  rowToRoadmap, RoadmapSummary,
+} from '../services/roadmapService';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, {
-  Defs, LinearGradient as SvgGrad, Stop,
-  Circle, Path,
-} from 'react-native-svg';
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-// ─────────────────────────────────────────────
-// Logo animado: Símbolo Alfa (α)
-// ─────────────────────────────────────────────
-const LOGO_SIZE = 180;
-// Ruta ajustada para la forma de alfa minúscula
-const ALPHA_PATH = "M 35,65 C 35,35 60,35 60,65 C 60,85 30,85 30,65 C 30,40 70,40 75,70";
-const TOTAL_LEN = 250;
-
-function AlphaLogoAnimated() {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = () => {
-      anim.setValue(0);
-      Animated.sequence([
-        Animated.delay(500),
-        Animated.timing(anim, { toValue: 1, duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: false }),
-        Animated.delay(1000),
-        Animated.timing(anim, { toValue: 2, duration: 1000, easing: Easing.in(Easing.cubic), useNativeDriver: false }),
-      ]).start(loop);
-    };
-    loop();
-  }, []);
-
-  const dashOffset = anim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [TOTAL_LEN, 0, -TOTAL_LEN],
-    extrapolate: 'clamp',
-  });
-
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Svg width={LOGO_SIZE} height={LOGO_SIZE} viewBox="0 0 100 100">
-        <Defs>
-          <SvgGrad id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#06b6d4" />
-            <Stop offset="50%" stopColor="#818cf8" />
-            <Stop offset="100%" stopColor="#06b6d4" />
-          </SvgGrad>
-        </Defs>
-        <Circle cx="50" cy="50" r="47" fill="#0c1a2e" stroke="#1e293b" strokeWidth="1" />
-        <AnimatedPath
-          d={ALPHA_PATH}
-          fill="none"
-          stroke="url(#lg1)"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray={`${TOTAL_LEN}`}
-          strokeDashoffset={dashOffset}
-        />
-      </Svg>
-    </View>
-  );
+import { LinearGradient } from 'expo-linear-gradient';
+import { SkeletonHistoryCard, EmptyState } from './SkeletonComponents';
+ 
+type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
+ 
+// ─── Fecha relativa ───────────────────────────
+function relativeDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+ 
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
-// ─────────────────────────────────────────────
-// Pantalla Principal
-// ─────────────────────────────────────────────
-function Chip({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <TouchableOpacity onPress={onPress} style={styles.chip} activeOpacity={0.7}>
-      <Text style={styles.chipText}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const RECENT = ['TypeScript', 'APIs REST', 'Node.js', 'Figma'];
-const SUGGEST = ['React Native', 'Machine Learning', 'UI/UX', 'Python'];
-
-export default function HomeScreen({ navigation }: any) {
-  const [query, setQuery] = useState('');
-  const [focused, setFocused] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(28)).current;
-
+ 
+// ─── Card individual ──────────────────────────
+function RoadmapCard({
+  item,
+  onOpen,
+  onDelete,
+  index,
+}: {
+  item: RoadmapSummary;
+  onOpen: () => void;
+  onDelete: () => void;
+  index: number;
+}) {
+  const entryAnim = useRef(new Animated.Value(0)).current;
+  const slideX = useRef(new Animated.Value(20)).current;
+ 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, delay: 300, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 600, delay: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(entryAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideX, {
+        toValue: 0,
+        duration: 280,
+        delay: index * 60,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
-
+ 
+  return (
+    <Animated.View style={{ opacity: entryAnim, transform: [{ translateX: slideX }] }}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onOpen}
+        activeOpacity={0.82}
+      >
+        <View style={styles.cardIcon}>
+          <Ionicons name="map-outline" size={18} color="#06b6d4" />
+        </View>
+ 
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          {item.description && (
+            <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+          )}
+          <View style={styles.cardMeta}>
+            <Ionicons name="time-outline" size={11} color="#334155" />
+            <Text style={styles.cardDate}>{relativeDate(item.created_at)}</Text>
+          </View>
+        </View>
+ 
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={onDelete}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="trash-outline" size={18} color="#ef4444" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+ 
+// ─── Screen ───────────────────────────────────
+export default function HistoryScreen({ navigation }: Props) {
+  const [roadmaps, setRoadmaps] = useState<RoadmapSummary[]>([]);
+  const [filtered, setFiltered] = useState<RoadmapSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+ 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(22)).current;
+ 
+  const loadHistory = useCallback(async (silent = false) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+ 
+    if (!silent) setLoading(true);
+    try {
+      const data = await getRoadmapHistory(session.user.id);
+      setRoadmaps(data);
+      setFiltered(data);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+ 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => loadHistory());
+ 
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+ 
+    return unsubscribe;
+  }, [navigation, loadHistory]);
+ 
+  // Búsqueda local
+  useEffect(() => {
+    if (!search.trim()) {
+      setFiltered(roadmaps);
+      return;
+    }
+    const q = search.toLowerCase();
+    setFiltered(roadmaps.filter(r =>
+      r.title.toLowerCase().includes(q) ||
+      r.description?.toLowerCase().includes(q)
+    ));
+  }, [search, roadmaps]);
+ 
+  const handleOpen = async (roadmapId: string) => {
+    try {
+      const row = await getRoadmapById(roadmapId);
+      if (!row) {
+        Alert.alert('Ruta no encontrada', 'Esta ruta ya no existe.');
+        loadHistory(true);
+        return;
+      }
+      navigation.navigate('Roadmap', { roadmap: rowToRoadmap(row) });
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+ 
+  const handleDelete = (roadmapId: string, title: string) => {
+    Alert.alert(
+      'Eliminar ruta',
+      `¿Eliminar "${title}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRoadmap(roadmapId);
+              loadHistory(true);
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+ 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadHistory(true);
+  };
+ 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} style={StyleSheet.absoluteFill} />
-
+ 
+      {/* HEADER */}
       <View style={styles.header}>
-        <Ionicons name="menu-outline" size={26} color="#475569" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#475569" />
+        </TouchableOpacity>
+ 
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
-          <Text style={styles.badgeTxt}>Alpha AI</Text>
+          <Text style={styles.badgeTxt}>Historial</Text>
+          {!loading && roadmaps.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countTxt}>{roadmaps.length}</Text>
+            </View>
+          )}
         </View>
-        <TouchableOpacity>
-          <LinearGradient colors={['#06b6d4', '#818cf8']} style={styles.avatar}>
-            <Ionicons name="person" size={17} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
+ 
+        <View style={styles.avatar}>
+          <Ionicons name="time-outline" size={16} color="#fff" />
+        </View>
       </View>
-
-      <View style={styles.layout}>
-        <View style={styles.sidebar}>
-          <Text style={styles.sidebarTitle}>Recientes</Text>
-          <FlatList
-            data={RECENT}
-            keyExtractor={i => i}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.histItem}>
-                <View style={styles.histDot} />
-                <Text style={styles.histTxt} numberOfLines={1}>{item}</Text>
+ 
+      {/* SEARCH (solo cuando hay rutas) */}
+      {!loading && roadmaps.length > 0 && (
+        <View style={styles.searchWrap}>
+          <View style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}>
+            <Ionicons name="search-outline" size={15} color={searchFocused ? '#06b6d4' : '#334155'} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar rutas…"
+              placeholderTextColor="#1e293b"
+              value={search}
+              onChangeText={setSearch}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={15} color="#334155" />
               </TouchableOpacity>
             )}
-          />
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.newBtn}>
-            <Ionicons name="add-circle-outline" size={18} color="#06b6d4" />
-            <Text style={styles.newTxt}>Nuevo</Text>
-          </TouchableOpacity>
+          </View>
         </View>
-
-        <Animated.View style={[styles.center, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.logoSection}>
-            <AlphaLogoAnimated />
-            <Text style={styles.logoName}>ALPHA</Text>
-            <Text style={styles.logoSub}>Tu tutor de aprendizaje con IA</Text>
+      )}
+ 
+      {/* CONTENIDO */}
+      {loading ? (
+        /* Skeleton loading */
+        <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          <View style={styles.list}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonHistoryCard key={i} />
+            ))}
           </View>
-
-          <View style={[styles.inputBox, focused && styles.inputBoxFocused]}>
-            <Ionicons name="search-outline" size={17} color={focused ? '#06b6d4' : '#475569'} style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.input}
-              placeholder="¿Qué quieres aprender hoy?"
-              placeholderTextColor="#334155"
-              value={query}
-              onChangeText={setQuery}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-            />
-          </View>
-
-          <View style={styles.chips}>
-            {SUGGEST.map(s => <Chip key={s} label={s} onPress={() => setQuery(s)} />)}
-          </View>
-
-          <TouchableOpacity style={styles.ctaWrap} activeOpacity={0.86}>
-            <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.cta}>
-              <Text style={styles.ctaTxt}>Generar Ruta de Aprendizaje</Text>
-              <Ionicons name="sparkles" size={15} color="#fff" style={{ marginLeft: 7 }} />
-            </LinearGradient>
-          </TouchableOpacity>
         </Animated.View>
-      </View>
+      ) : filtered.length === 0 ? (
+        /* Empty state */
+        <View style={styles.emptyContainer}>
+          {search.trim() ? (
+            <EmptyState
+              icon="search-outline"
+              title="Sin resultados"
+              subtitle={`No encontramos rutas que coincidan con "${search}".`}
+              actionLabel="Limpiar búsqueda"
+              onAction={() => setSearch('')}
+            />
+          ) : (
+            <EmptyState
+              icon="map-outline"
+              title="Sin rutas guardadas"
+              subtitle="Genera tu primera ruta de aprendizaje y aparecerá aquí."
+              actionLabel="Crear mi primera ruta"
+              onAction={() => navigation.goBack()}
+            />
+          )}
+        </View>
+      ) : (
+        <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          <FlatList
+            data={filtered}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor="#06b6d4"
+                colors={['#06b6d4']}
+              />
+            }
+            renderItem={({ item, index }) => (
+              <RoadmapCard
+                item={item}
+                index={index}
+                onOpen={() => handleOpen(item.id)}
+                onDelete={() => handleDelete(item.id, item.title)}
+              />
+            )}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 32, paddingBottom: 12 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#1e293b', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
-  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' },
-  badgeTxt: { color: '#94a3b8', fontSize: 11, fontWeight: '600', letterSpacing: 0.5 },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  layout: { flex: 1, flexDirection: 'row', paddingHorizontal: 14 },
-  sidebar: { width: 76, paddingTop: 8, paddingRight: 12, borderRightWidth: 1, borderColor: '#1e293b' },
-  sidebarTitle: { color: '#334155', fontSize: 8.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 },
-  histItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 5 },
-  histDot: { width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: '#334155' },
-  histTxt: { color: '#475569', fontSize: 10.5, flex: 1 },
-  divider: { height: 1, backgroundColor: '#1e293b', marginVertical: 12 },
-  newBtn: { alignItems: 'center', gap: 4 },
-  newTxt: { color: '#06b6d4', fontSize: 9.5, fontWeight: '600' },
-  center: { flex: 1, paddingLeft: 18, justifyContent: 'center' },
-  logoSection: { alignItems: 'center', marginBottom: 28 },
-  logoName: { color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 10, marginTop: 10 },
-  logoSub: { color: '#475569', fontSize: 10.5, marginTop: 4, letterSpacing: 0.3 },
-  inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', borderRadius: 14, borderWidth: 1, borderColor: '#1e293b', paddingHorizontal: 14, paddingVertical: 13, marginBottom: 11 },
-  inputBoxFocused: { borderColor: '#06b6d4', backgroundColor: '#0c1a2e' },
-  input: { flex: 1, color: '#e2e8f0', fontSize: 13, padding: 0 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 18 },
-  chip: { backgroundColor: '#1e293b', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5, borderWidth: 1, borderColor: '#334155' },
-  chipText: { color: '#64748b', fontSize: 10.5, fontWeight: '500' },
-  ctaWrap: { borderRadius: 14, overflow: 'hidden', marginBottom: 24 },
-  cta: { paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-  ctaTxt: { color: '#fff', fontWeight: '700', fontSize: 13.5, letterSpacing: 0.2 },
+ 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 56 : 32,
+    paddingBottom: 12,
+  },
+ 
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#06b6d4' },
+  badgeTxt: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
+ 
+  countBadge: {
+    backgroundColor: '#06b6d4',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  countTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
+ 
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#06b6d4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+ 
+  searchWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0f172a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchBoxFocused: {
+    borderColor: '#06b6d4',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#e2e8f0',
+    fontSize: 13,
+    padding: 0,
+  },
+ 
+  emptyContainer: { flex: 1 },
+ 
+  list: { padding: 16 },
+ 
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#0f172a',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    gap: 12,
+  },
+ 
+  cardIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#0c1a2e',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+ 
+  cardBody: { flex: 1 },
+ 
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#e2e8f0',
+    marginBottom: 3,
+  },
+  
+  cardDesc: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 5,
+    lineHeight: 17,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardDate: {
+    fontSize: 11,
+    color: '#334155',
+  },
+ 
+  deleteBtn: {
+    padding: 6,
+  },
 });
