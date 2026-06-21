@@ -1,12 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, Animated, Easing,
-  KeyboardAvoidingView, Platform, StatusBar
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { signIn } from '../services/authService';
+
+type LoginScreenProps = {
+  onDemoLogin?: () => void;
+};
 
 // ─────────────────────────────
 // Logo Alpha animado
@@ -20,16 +32,16 @@ function AlphaLogo() {
         Animated.timing(pulse, {
           toValue: 1.08,
           duration: 1800,
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 1,
           duration: 1800,
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
       ])
     ).start();
-  }, []);
+  }, [pulse]);
 
   return (
     <Animated.View style={{ transform: [{ scale: pulse }] }}>
@@ -41,7 +53,7 @@ function AlphaLogo() {
           borderRadius: 41,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 18
+          marginBottom: 18,
         }}
       >
         <Text style={{ color: '#fff', fontSize: 34, fontWeight: '900' }}>α</Text>
@@ -53,7 +65,7 @@ function AlphaLogo() {
 // ─────────────────────────────
 // Screen
 // ─────────────────────────────
-export default function LoginScreen() {
+export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,16 +78,16 @@ export default function LoginScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true
+        useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 650,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true
+        useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const handleAuth = async () => {
     setLoading(true);
@@ -94,7 +106,7 @@ export default function LoginScreen() {
       {/* Fondo Alpha */}
       <LinearGradient
         colors={['#020617', '#0f172a', '#0c1a2e']}
-       
+        style={styles.background}
       />
 
       <KeyboardAvoidingView
@@ -106,17 +118,15 @@ export default function LoginScreen() {
             styles.card,
             {
               opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
+              transform: [{ translateY: slideAnim }],
+            },
           ]}
         >
           {/* Logo */}
           <View style={{ alignItems: 'center' }}>
             <AlphaLogo />
             <Text style={styles.title}>ALPHA</Text>
-            <Text style={styles.subtitle}>
-              Inicia sesión para continuar
-            </Text>
+            <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
           </View>
 
           {/* Inputs */}
@@ -128,6 +138,8 @@ export default function LoginScreen() {
               value={email}
               onChangeText={setEmail}
               style={styles.input}
+              autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
@@ -143,16 +155,14 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Botón */}
+          {/* Botón login */}
           <TouchableOpacity
             style={styles.btnWrap}
             onPress={handleAuth}
             activeOpacity={0.85}
+            disabled={loading}
           >
-            <LinearGradient
-              colors={['#06b6d4', '#6366f1']}
-              style={styles.btn}
-            >
+            <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.btn}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -169,10 +179,18 @@ export default function LoginScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          {/* Botón demo */}
+          <TouchableOpacity
+            style={styles.demoBtn}
+            onPress={onDemoLogin}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="flask-outline" size={16} color="#06b6d4" />
+            <Text style={styles.demoBtnText}>Entrar en modo demo</Text>
+          </TouchableOpacity>
+
           {/* Footer */}
-          <Text style={styles.footer}>
-            Alpha AI • Learning System
-          </Text>
+          <Text style={styles.footer}>Alpha AI • Learning System</Text>
         </Animated.View>
       </KeyboardAvoidingView>
     </View>
@@ -187,8 +205,9 @@ const styles = {
     flex: 1,
   },
 
-
-  
+  background: {
+...StyleSheet.absoluteFill,
+  },
 
   wrapper: {
     flex: 1,
@@ -255,6 +274,25 @@ const styles = {
     color: '#fff',
     fontWeight: '700',
     fontSize: 13.5,
+  },
+
+  demoBtn: {
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    backgroundColor: '#0c1a2e',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  demoBtnText: {
+    color: '#06b6d4',
+    fontWeight: '700',
+    fontSize: 13,
   },
 
   footer: {

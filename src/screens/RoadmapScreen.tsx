@@ -1,8 +1,16 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Linking, Share,
-  Animated, Easing, StatusBar, Platform
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Linking,
+  Share,
+  Animated,
+  Easing,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +23,27 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 export default function RoadmapScreen({ route }: Props) {
   const { roadmap } = route.params;
 
+  const [completedNodes, setCompletedNodes] = useState<string[]>(
+    roadmap.nodes
+      .filter((node: RoadmapNode) => node.data.isCompleted)
+      .map((node: RoadmapNode) => node.id)
+  );
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const totalNodes = roadmap.nodes.length;
+  const completedCount = completedNodes.length;
+  const progressPercent =
+    totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
+
+  const toggleNodeCompleted = (nodeId: string) => {
+    setCompletedNodes((current) =>
+      current.includes(nodeId)
+        ? current.filter((id) => id !== nodeId)
+        : [...current, nodeId]
+    );
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -32,7 +59,7 @@ export default function RoadmapScreen({ route }: Props) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(console.error);
@@ -45,6 +72,7 @@ export default function RoadmapScreen({ route }: Props) {
       roadmap.nodes
         .map((n: RoadmapNode, i: number) => `${i + 1}. ${n.data.label}`)
         .join('\n') +
+      `\n\nProgreso: ${completedCount}/${totalNodes} completados (${progressPercent}%)` +
       `\n\nGenerado con Alpha AI`;
 
     await Share.share({
@@ -57,34 +85,24 @@ export default function RoadmapScreen({ route }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background Alpha */}
       <LinearGradient
         colors={['#020617', '#0f172a', '#0c1a2e']}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* HEADER */}
       <View style={styles.header}>
-        <Ionicons
-          name="arrow-back"
-          size={24}
-          color="#475569"
-        />
+        <Ionicons name="arrow-back" size={24} color="#475569" />
 
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
           <Text style={styles.badgeTxt}>Roadmap</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleShare}
-          style={styles.shareBtn}
-        >
+        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
           <Ionicons name="share-social-outline" size={18} color="#06b6d4" />
         </TouchableOpacity>
       </View>
 
-      {/* CONTENT */}
       <Animated.View
         style={[
           styles.content,
@@ -97,65 +115,160 @@ export default function RoadmapScreen({ route }: Props) {
         <Text style={styles.title}>{roadmap.title}</Text>
         <Text style={styles.desc}>{roadmap.description}</Text>
 
+        <View style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <View>
+              <Text style={styles.progressLabel}>Progreso de la ruta</Text>
+              <Text style={styles.progressSubLabel}>
+                {completedCount} de {totalNodes} nodos completados
+              </Text>
+            </View>
+
+            <Text style={styles.progressPercent}>{progressPercent}%</Text>
+          </View>
+
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${progressPercent}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.timeline}>
             <View style={styles.line} />
 
-            {roadmap.nodes.map((node: RoadmapNode, index: number) => (
-              <View key={node.id} style={styles.nodeRow}>
-                {/* DOT */}
-                <View style={styles.dotWrap}>
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: node.data.isCompleted
-                          ? '#22c55e'
-                          : '#06b6d4',
-                      },
-                    ]}
-                  />
-                  <Text style={styles.step}>{index + 1}</Text>
-                </View>
+            {roadmap.nodes.map((node: RoadmapNode, index: number) => {
+              const isCompleted = completedNodes.includes(node.id);
+              const isLastNode = index === roadmap.nodes.length - 1;
 
-                {/* CARD */}
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>
-                    {node.data.label}
-                  </Text>
-
-                  <Text style={styles.cardDesc}>
-                    {node.data.description}
-                  </Text>
-
-                  {/* RESOURCES */}
-                  <View style={styles.resources}>
-                    {node.data.resources.map((res: Resource, i: number) => (
+              return (
+                <View key={node.id} style={styles.nodeBlock}>
+                  <View style={styles.nodeRow}>
+                    <View style={styles.dotWrap}>
                       <TouchableOpacity
-                        key={res.id ?? `r-${i}`}
-                        onPress={() => openLink(res.url)}
-                        style={styles.resource}
+                        onPress={() => toggleNodeCompleted(node.id)}
                         activeOpacity={0.8}
+                        style={[
+                          styles.checkCircle,
+                          isCompleted && styles.checkCircleCompleted,
+                        ]}
                       >
-                        <Ionicons
-                          name="link-outline"
-                          size={14}
-                          color="#06b6d4"
-                        />
-                        <Text style={styles.resourceText} numberOfLines={1}>
-                          {res.title}
-                        </Text>
-                        <Ionicons
-                          name="open-outline"
-                          size={14}
-                          color="#475569"
-                        />
+                        {isCompleted ? (
+                          <Ionicons name="checkmark" size={15} color="#020617" />
+                        ) : (
+                          <Text style={styles.step}>{index + 1}</Text>
+                        )}
                       </TouchableOpacity>
-                    ))}
+                    </View>
+
+                    <View
+                      style={[
+                        styles.card,
+                        isCompleted && styles.cardCompleted,
+                      ]}
+                    >
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardTitleWrap}>
+                          <Text
+                            style={[
+                              styles.cardTitle,
+                              isCompleted && styles.cardTitleCompleted,
+                            ]}
+                          >
+                            {node.data.label}
+                          </Text>
+
+                          <Text style={styles.cardStatus}>
+                            {isCompleted ? 'Completado' : 'Pendiente'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => toggleNodeCompleted(node.id)}
+                          style={[
+                            styles.checkButton,
+                            isCompleted && styles.checkButtonCompleted,
+                          ]}
+                        >
+                          <Ionicons
+                            name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={18}
+                            color={isCompleted ? '#22c55e' : '#64748b'}
+                          />
+                          <Text
+                            style={[
+                              styles.checkButtonText,
+                              isCompleted && styles.checkButtonTextCompleted,
+                            ]}
+                          >
+                            {isCompleted ? 'Listo' : 'Marcar'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.cardDesc,
+                          isCompleted && styles.cardDescCompleted,
+                        ]}
+                      >
+                        {node.data.description}
+                      </Text>
+
+                      <View style={styles.resources}>
+                        {node.data.resources.map((res: Resource, i: number) => (
+                          <TouchableOpacity
+                            key={res.id ?? `r-${i}`}
+                            onPress={() => openLink(res.url)}
+                            style={styles.resource}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons
+                              name="link-outline"
+                              size={14}
+                              color="#06b6d4"
+                            />
+                            <Text style={styles.resourceText} numberOfLines={1}>
+                              {res.title}
+                            </Text>
+                            <Ionicons
+                              name="open-outline"
+                              size={14}
+                              color="#475569"
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
                   </View>
+
+                  {!isLastNode && (
+                    <View style={styles.edgeRow}>
+                      <View style={styles.edgeSpacer} />
+                      <View style={styles.edgeBox}>
+                        <View
+                          style={[
+                            styles.edgeLine,
+                            isCompleted && styles.edgeLineCompleted,
+                          ]}
+                        />
+                        <Ionicons
+                          name="arrow-down"
+                          size={16}
+                          color={isCompleted ? '#22c55e' : '#334155'}
+                        />
+                      </View>
+                    </View>
+                  )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       </Animated.View>
@@ -163,10 +276,7 @@ export default function RoadmapScreen({ route }: Props) {
   );
 }
 
-// ─────────────────────────────
-// STYLE ALPHA
-// ─────────────────────────────
-const styles = {
+const styles = StyleSheet.create({
   container: { flex: 1 },
 
   header: {
@@ -229,6 +339,53 @@ const styles = {
     marginBottom: 18,
   },
 
+  progressCard: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 18,
+  },
+
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  progressLabel: {
+    color: '#e2e8f0',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  progressSubLabel: {
+    color: '#64748b',
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  progressPercent: {
+    color: '#22c55e',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+
+  progressTrack: {
+    height: 9,
+    backgroundColor: '#1e293b',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#22c55e',
+    borderRadius: 999,
+  },
+
   timeline: {
     position: 'relative',
     paddingLeft: 6,
@@ -237,34 +394,48 @@ const styles = {
 
   line: {
     position: 'absolute',
-    left: 14,
+    left: 20,
     top: 10,
     bottom: 10,
     width: 2,
     backgroundColor: '#1e293b',
   },
 
+  nodeBlock: {
+    marginBottom: 4,
+  },
+
   nodeRow: {
     flexDirection: 'row',
-    marginBottom: 18,
   },
 
   dotWrap: {
-    width: 30,
+    width: 40,
     alignItems: 'center',
     marginRight: 10,
   },
 
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0f172a',
+    borderWidth: 2,
+    borderColor: '#06b6d4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+
+  checkCircleCompleted: {
+    backgroundColor: '#22c55e',
+    borderColor: '#22c55e',
   },
 
   step: {
     fontSize: 10,
-    color: '#475569',
-    marginTop: 4,
+    color: '#06b6d4',
+    fontWeight: '800',
   },
 
   card: {
@@ -276,17 +447,75 @@ const styles = {
     padding: 14,
   },
 
+  cardCompleted: {
+    borderColor: '#14532d',
+    backgroundColor: '#0b1f18',
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 6,
+  },
+
+  cardTitleWrap: {
+    flex: 1,
+  },
+
   cardTitle: {
     color: '#e2e8f0',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 4,
+  },
+
+  cardTitleCompleted: {
+    color: '#bbf7d0',
+  },
+
+  cardStatus: {
+    color: '#64748b',
+    fontSize: 10,
+    marginTop: 2,
   },
 
   cardDesc: {
     color: '#94a3b8',
     fontSize: 12,
     marginBottom: 10,
+    lineHeight: 17,
+  },
+
+  cardDescCompleted: {
+    color: '#86efac',
+  },
+
+  checkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+
+  checkButtonCompleted: {
+    backgroundColor: '#052e16',
+    borderColor: '#14532d',
+  },
+
+  checkButtonText: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  checkButtonTextCompleted: {
+    color: '#22c55e',
   },
 
   resources: {
@@ -310,4 +539,32 @@ const styles = {
     color: '#e2e8f0',
     fontSize: 12,
   },
-} as const;
+
+  edgeRow: {
+    flexDirection: 'row',
+    minHeight: 30,
+  },
+
+  edgeSpacer: {
+    width: 40,
+    marginRight: 10,
+  },
+
+  edgeBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+
+  edgeLine: {
+    width: 2,
+    height: 14,
+    backgroundColor: '#334155',
+    marginBottom: 2,
+  },
+
+  edgeLineCompleted: {
+    backgroundColor: '#22c55e',
+  },
+});
