@@ -4,6 +4,7 @@ import type { Roadmap } from '../types/roadmap';
 
 type RoadmapState = {
   currentRoadmap: Roadmap | null;
+  localRoadmaps: Roadmap[];
   recentTopics: string[];
   completedNodes: string[];
 
@@ -13,12 +14,14 @@ type RoadmapState = {
   toggleNodeCompleted: (nodeId: string) => void;
   saveCurrentRoadmapLocal: () => Promise<void>;
   clearRoadmap: () => void;
+  loadLocalRoadmaps: () => void;
 };
 
 const DEFAULT_TOPICS = ['React Native', 'Machine Learning', 'Diseño UX', 'Python Básico'];
 
 export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   currentRoadmap: null,
+  localRoadmaps: [],
   recentTopics: [],
   completedNodes: [],
 
@@ -72,4 +75,13 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       currentRoadmap: null,
       completedNodes: [],
     }),
+
+  loadLocalRoadmaps: async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@roadmap_history');
+      set({ localRoadmaps: stored ? JSON.parse(stored) : [] });
+    } catch {
+      set({ localRoadmaps: [] });
+    }
+  },
 }));

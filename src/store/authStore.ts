@@ -6,10 +6,12 @@ type AuthState = {
   user: User | null;
   session: Session | null;
   initializing: boolean;
+  isDemo: boolean;
   isDemoMode: boolean;
   initializeAuth: () => Promise<void>;
   setSession: (session: Session | null) => void;
   loginDemo: () => void;
+  logout: () => void;
   logoutDemo: () => void;
 };
 
@@ -17,6 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   session: null,
   initializing: true,
+  isDemo: false,
   isDemoMode: false,
 
   initializeAuth: async () => {
@@ -29,6 +32,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         session,
         user: session?.user ?? null,
         initializing: false,
+        isDemo: false,
         isDemoMode: false,
       });
     } catch {
@@ -36,6 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         session: null,
         user: null,
         initializing: false,
+        isDemo: false,
         isDemoMode: false,
       });
     }
@@ -45,6 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({
       session,
       user: session?.user ?? null,
+      isDemo: false,
       isDemoMode: false,
     }),
 
@@ -62,7 +68,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         created_at: new Date().toISOString(),
       } as User,
       initializing: false,
+      isDemo: true,
       isDemoMode: true,
+    }),
+
+  logout: () =>
+    set({
+      session: null,
+      user: null,
+      initializing: false,
+      isDemo: false,
+      isDemoMode: false,
     }),
 
   logoutDemo: () =>
@@ -70,6 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       session: null,
       user: null,
       initializing: false,
+      isDemo: false,
       isDemoMode: false,
     }),
 }));

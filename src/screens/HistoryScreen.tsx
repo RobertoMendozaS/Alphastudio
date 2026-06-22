@@ -14,6 +14,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../types/navigation';
+import type { Roadmap } from '../types/roadmap';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonHistoryCard, EmptyState } from './SkeletonComponents';
@@ -128,8 +129,15 @@ export default function HistoryScreen({ navigation }: Props) {
       await loadLocalRoadmaps();
       const data = useRoadmapStore.getState().localRoadmaps;
       if (!silent) setLoading(true);
-      setRoadmaps(data);
-      setFiltered(data);
+      const summaries: RoadmapSummary[] = data.map(r => ({
+        id: r.title,
+        title: r.title,
+        description: r.description ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      setRoadmaps(summaries);
+      setFiltered(summaries);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -181,7 +189,7 @@ export default function HistoryScreen({ navigation }: Props) {
 
   const handleOpen = async (roadmapId: string) => {
     if (isDemo) {
-      const roadmap = localRoadmaps.find(r => r.id === roadmapId);
+      const roadmap = localRoadmaps.find((r: Roadmap) => r.title === roadmapId);
       if (roadmap) {
         setCurrentRoadmap(roadmap);
         navigation.navigate('Roadmap', { roadmap });
