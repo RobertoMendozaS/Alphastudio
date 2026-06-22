@@ -10,42 +10,49 @@ import {
   getRoadmapHistory, getRoadmapById, deleteRoadmap,
   rowToRoadmap, RoadmapSummary,
 } from '../services/roadmapService';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import type { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonHistoryCard, EmptyState } from './SkeletonComponents';
- 
-type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
- 
-// ─── Fecha relativa ───────────────────────────
+import { useAuthStore } from '../store/authStore';
+import { useRoadmapStore } from '../store/roadmapStore';
+
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'History'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
 function relativeDate(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / 86400000);
- 
+
   if (diffDays === 0) return 'Hoy';
   if (diffDays === 1) return 'Ayer';
   if (diffDays < 7) return `Hace ${diffDays} días`;
   return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 }
- 
-// ─── Card individual ──────────────────────────
+
 function RoadmapCard({
   item,
   onOpen,
   onDelete,
   index,
+  isDemoMode = false,
 }: {
   item: RoadmapSummary;
   onOpen: () => void;
   onDelete: () => void;
   index: number;
+  isDemoMode?: boolean;
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const slideX = useRef(new Animated.Value(20)).current;
- 
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(entryAnim, {
@@ -63,7 +70,7 @@ function RoadmapCard({
       }),
     ]).start();
   }, []);
- 
+
   return (
     <Animated.View style={{ opacity: entryAnim, transform: [{ translateX: slideX }] }}>
       <TouchableOpacity
@@ -74,7 +81,7 @@ function RoadmapCard({
         <View style={styles.cardIcon}>
           <Ionicons name="map-outline" size={18} color="#06b6d4" />
         </View>
- 
+
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           {item.description && (
@@ -82,23 +89,26 @@ function RoadmapCard({
           )}
           <View style={styles.cardMeta}>
             <Ionicons name="time-outline" size={11} color="#334155" />
-            <Text style={styles.cardDate}>{relativeDate(item.created_at)}</Text>
+            <Text style={styles.cardDate}>
+              {isDemoMode ? 'Guardado local' : relativeDate(item.created_at)}
+            </Text>
           </View>
         </View>
- 
-        <TouchableOpacity
-          style={styles.deleteBtn}
-          onPress={onDelete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="trash-outline" size={18} color="#ef4444" />
-        </TouchableOpacity>
+
+        {!isDemoMode && (
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={onDelete}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#ef4444" />
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
 }
- 
-// ─── Screen ───────────────────────────────────
+
 export default function HistoryScreen({ navigation }: Props) {
   const [roadmaps, setRoadmaps] = useState<RoadmapSummary[]>([]);
   const [filtered, setFiltered] = useState<RoadmapSummary[]>([]);
@@ -106,14 +116,28 @@ export default function HistoryScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
- 
+
+  const isDemo = useAuthStore((state) => state.isDemo);
+  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap } = useRoadmapStore();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
- 
+
   const loadHistory = useCallback(async (silent = false) => {
+    if (isDemo) {
+      await loadLocalRoadmaps();
+      const data = useRoadmapStore.getState().localRoadmaps;
+      if (!silent) setLoading(true);
+      setRoadmaps(data);
+      setFiltered(data);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
- 
+
     if (!silent) setLoading(true);
     try {
       const data = await getRoadmapHistory(session.user.id);
@@ -125,11 +149,11 @@ export default function HistoryScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
- 
+  }, [isDemo, loadLocalRoadmaps]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => loadHistory());
- 
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, {
@@ -139,11 +163,10 @@ export default function HistoryScreen({ navigation }: Props) {
         useNativeDriver: true,
       }),
     ]).start();
- 
+
     return unsubscribe;
   }, [navigation, loadHistory]);
- 
-  // Búsqueda local
+
   useEffect(() => {
     if (!search.trim()) {
       setFiltered(roadmaps);
@@ -155,8 +178,17 @@ export default function HistoryScreen({ navigation }: Props) {
       r.description?.toLowerCase().includes(q)
     ));
   }, [search, roadmaps]);
- 
+
   const handleOpen = async (roadmapId: string) => {
+    if (isDemo) {
+      const roadmap = localRoadmaps.find(r => r.id === roadmapId);
+      if (roadmap) {
+        setCurrentRoadmap(roadmap);
+        navigation.navigate('Roadmap', { roadmap });
+      }
+      return;
+    }
+
     try {
       const row = await getRoadmapById(roadmapId);
       if (!row) {
@@ -164,13 +196,20 @@ export default function HistoryScreen({ navigation }: Props) {
         loadHistory(true);
         return;
       }
-      navigation.navigate('Roadmap', { roadmap: rowToRoadmap(row) });
+      const roadmap = rowToRoadmap(row);
+      setCurrentRoadmap(roadmap);
+      navigation.navigate('Roadmap', { roadmap });
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
   };
- 
+
   const handleDelete = (roadmapId: string, title: string) => {
+    if (isDemo) {
+      Alert.alert('No disponible', 'Eliminar rutas no está disponible en modo demo.');
+      return;
+    }
+
     Alert.alert(
       'Eliminar ruta',
       `¿Eliminar "${title}"? Esta acción no se puede deshacer.`,
@@ -191,18 +230,17 @@ export default function HistoryScreen({ navigation }: Props) {
       ]
     );
   };
- 
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadHistory(true);
   };
- 
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} style={StyleSheet.absoluteFill} />
- 
-      {/* HEADER */}
+
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -210,7 +248,7 @@ export default function HistoryScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={24} color="#475569" />
         </TouchableOpacity>
- 
+
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
           <Text style={styles.badgeTxt}>Historial</Text>
@@ -220,13 +258,12 @@ export default function HistoryScreen({ navigation }: Props) {
             </View>
           )}
         </View>
- 
+
         <View style={styles.avatar}>
           <Ionicons name="time-outline" size={16} color="#fff" />
         </View>
       </View>
- 
-      {/* SEARCH (solo cuando hay rutas) */}
+
       {!loading && roadmaps.length > 0 && (
         <View style={styles.searchWrap}>
           <View style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}>
@@ -248,10 +285,8 @@ export default function HistoryScreen({ navigation }: Props) {
           </View>
         </View>
       )}
- 
-      {/* CONTENIDO */}
+
       {loading ? (
-        /* Skeleton loading */
         <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <View style={styles.list}>
             {Array.from({ length: 5 }).map((_, i) => (
@@ -260,7 +295,6 @@ export default function HistoryScreen({ navigation }: Props) {
           </View>
         </Animated.View>
       ) : filtered.length === 0 ? (
-        /* Empty state */
         <View style={styles.emptyContainer}>
           {search.trim() ? (
             <EmptyState
@@ -284,7 +318,7 @@ export default function HistoryScreen({ navigation }: Props) {
         <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <FlatList
             data={filtered}
-            keyExtractor={item => item.id}
+            keyExtractor={(item, index) => item.id || `local-${index}`}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -299,6 +333,7 @@ export default function HistoryScreen({ navigation }: Props) {
               <RoadmapCard
                 item={item}
                 index={index}
+                isDemoMode={isDemo}
                 onOpen={() => handleOpen(item.id)}
                 onDelete={() => handleDelete(item.id, item.title)}
               />
@@ -309,10 +344,10 @@ export default function HistoryScreen({ navigation }: Props) {
     </View>
   );
 }
- 
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
- 
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -321,7 +356,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 32,
     paddingBottom: 12,
   },
- 
+
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -335,7 +370,7 @@ const styles = StyleSheet.create({
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#06b6d4' },
   badgeTxt: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
- 
+
   countBadge: {
     backgroundColor: '#06b6d4',
     borderRadius: 10,
@@ -343,7 +378,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   countTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
- 
+
   avatar: {
     width: 36,
     height: 36,
@@ -352,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
- 
+
   searchWrap: {
     paddingHorizontal: 16,
     paddingBottom: 10,
@@ -377,11 +412,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     padding: 0,
   },
- 
+
   emptyContainer: { flex: 1 },
- 
+
   list: { padding: 16 },
- 
+
   card: {
     flexDirection: 'row',
     backgroundColor: '#0f172a',
@@ -393,7 +428,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
- 
+
   cardIcon: {
     width: 38,
     height: 38,
@@ -404,16 +439,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
- 
+
   cardBody: { flex: 1 },
- 
+
   cardTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#e2e8f0',
     marginBottom: 3,
   },
-  
+
   cardDesc: {
     fontSize: 12,
     color: '#64748b',
@@ -429,7 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#334155',
   },
- 
+
   deleteBtn: {
     padding: 6,
   },

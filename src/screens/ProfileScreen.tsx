@@ -4,59 +4,47 @@ import {
   ActivityIndicator, Alert,
   StatusBar, Animated, Easing, Platform
 } from 'react-native';
-import { supabase } from '../services/supabaseClient';
-import { signOut, performCheckIn, getStreak } from '../services/authService';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '../store/authStore';
+import { useRoadmapStore } from '../store/roadmapStore';
+import { performCheckIn, getStreak } from '../services/authService';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
-/**
- * Pantalla de Perfil de Usuario.
- * 
- * Muestra la información del usuario (email), su racha actual (streak) y permite
- * realizar un check-in diario para incrementar dicha racha. También proporciona
- * acceso al historial de rutas y permite cerrar sesión.
- *
- * @param {Props} props - Propiedades de navegación de React Navigation.
- */
 export default function ProfileScreen({ navigation }: Props) {
-  const [userEmail, setUserEmail] = useState('');
+  const { user, isDemo, logout } = useAuthStore();
+  const currentRoadmap = useRoadmapStore((state) => state.currentRoadmap);
   const [streak, setStreak] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
-
-  /**
-   * Carga los datos iniciales del perfil: sesión actual, email del usuario,
-   * y la racha (streak) actual. Verifica también si ya se realizó el check-in hoy.
-   * Utiliza useCallback para evitar recrear la función innecesariamente.
-   */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const completedNodes = currentRoadmap?.nodes.filter((node) => node.data.isCompleted).length ?? 0;
+  const totalNodes = currentRoadmap?.nodes.length ?? 0;
+  const progressPercent = totalNodes > 0 ? Math.round((completedNodes / totalNodes) * 100) : 0;
+  const userEmail = user?.email ?? 'Usuario sin correo';
+
   const loadProfile = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
-    setUserEmail(session.user.email ?? '');
-
+    if (!user) return;
     try {
-      const { streak, checkedInToday } = await getStreak(session.user.id);
-      setStreak(streak);
-      setCheckedInToday(checkedInToday);
+      const data = await getStreak(user.id);
+      setStreak(data.streak);
+      setCheckedInToday(data.checkedInToday);
     } catch {
       setStreak(0);
       setCheckedInToday(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadProfile);
-
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -70,78 +58,55 @@ export default function ProfileScreen({ navigation }: Props) {
         useNativeDriver: true,
       }),
     ]).start();
-
     return unsubscribe;
-  }, [navigation, loadProfile]);
+  }, [navigation, loadProfile, fadeAnim, slideAnim]);
 
-  /**
-   * Maneja el proceso de check-in diario.
-   * Llama a la API para registrar el check-in y actualiza el estado local
-   * reflejando la nueva racha si es exitoso, o muestra un mensaje de alerta.
-   */
   const handleCheckIn = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
+    if (!user) return;
     setCheckingIn(true);
     try {
-      const success = await performCheckIn(session.user.id);
+      const success = await performCheckIn(user.id);
       if (success) {
-        const { streak } = await getStreak(session.user.id);
-        setStreak(streak);
+        const { streak: newStreak } = await getStreak(user.id);
+        setStreak(newStreak);
         setCheckedInToday(true);
         Alert.alert(
           '🔥 Check-in completado',
-          `Llevas ${streak} día${streak !== 1 ? 's' : ''} consecutivo${streak !== 1 ? 's' : ''}.`
+          `Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`
         );
       } else {
         Alert.alert('Ya hiciste check-in hoy', 'Vuelve mañana.');
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Ocurrió un error inesperado";
+      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado';
       Alert.alert('Error', message);
     } finally {
       setCheckingIn(false);
     }
   };
 
-  /**
-   * Maneja el cierre de sesión del usuario.
-   * Muestra un cuadro de confirmación (adaptado para web o móvil) y
-   * cierra la sesión mediante Supabase Auth.
-   */
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
-      if (confirm) {
-        try {
-          await signOut();
-        } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : "Error al cerrar sesión";
+    const executeLogout = async () => {
+      try {
+        await logout();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error al cerrar sesión';
+        if (Platform.OS === 'web') {
           window.alert(message);
+        } else {
+          Alert.alert('Error', message);
         }
       }
-    } else {
-      Alert.alert(
-        'Cerrar sesión',
-        '¿Estás seguro de que quieres cerrar sesión?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Cerrar sesión',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await signOut();
-              } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : "Error al cerrar sesión";
-                Alert.alert('Error', message);
-              }
-            },
-          },
-        ]
-      );
+    };
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
+      if (confirm) await executeLogout();
+      return;
     }
+    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: executeLogout },
+    ]);
   };
 
   if (loading) {
@@ -155,13 +120,7 @@ export default function ProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* Fondo Alpha */}
-      <LinearGradient
-        colors={['#020617', '#0f172a', '#0c1a2e']}
-      />
-
-      {/* HEADER */}
+      <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} />
       <View style={styles.header}>
         <Ionicons
           name="arrow-back"
@@ -169,54 +128,46 @@ export default function ProfileScreen({ navigation }: Props) {
           color="#475569"
           onPress={() => navigation.goBack()}
         />
-
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
           <Text style={styles.badgeTxt}>Perfil</Text>
         </View>
-
         <View style={styles.avatarSmall}>
           <Ionicons name="person" size={16} color="#fff" />
         </View>
       </View>
-
-      {/* CONTENT */}
       <Animated.View
         style={[
           styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
-        {/* USER CARD */}
         <View style={styles.userCard}>
-          <LinearGradient
-            colors={['#06b6d4', '#6366f1']}
-            style={styles.avatar}
-          >
+          <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.avatar}>
             <Ionicons name="person" size={28} color="#fff" />
           </LinearGradient>
-
           <Text style={styles.email}>{userEmail}</Text>
           <Text style={styles.sub}>Usuario Alpha AI</Text>
+          {isDemo ? <Text style={styles.demoBadge}>Modo demo sin Supabase</Text> : null}
         </View>
-
-        {/* STREAK CARD */}
+        {currentRoadmap ? (
+          <View style={styles.progressCard}>
+            <Ionicons name="analytics-outline" size={32} color="#38bdf8" />
+            <Text style={styles.progressCount}>{progressPercent}%</Text>
+            <Text style={styles.progressLabel}>progreso de la ruta actual</Text>
+            <Text style={styles.progressDetail}>
+              {completedNodes} de {totalNodes} módulos completados
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.streakCard}>
           <Ionicons name="flame" size={28} color="#f97316" />
-
           <Text style={styles.streakCount}>{streak}</Text>
           <Text style={styles.streakLabel}>
             día{streak !== 1 ? 's' : ''} consecutivo{streak !== 1 ? 's' : ''}
           </Text>
-
           <TouchableOpacity
-            style={[
-              styles.checkBtn,
-              checkedInToday && styles.checkBtnDone
-            ]}
+            style={[styles.checkBtn, checkedInToday && styles.checkBtnDone]}
             onPress={handleCheckIn}
             disabled={checkingIn || checkedInToday}
             activeOpacity={0.85}
@@ -230,8 +181,6 @@ export default function ProfileScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
         </View>
-
-        {/* MENU */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate('History')}
@@ -241,8 +190,6 @@ export default function ProfileScreen({ navigation }: Props) {
           <Text style={styles.menuText}>Historial de rutas</Text>
           <Ionicons name="chevron-forward" size={18} color="#475569" />
         </TouchableOpacity>
-
-        {/* LOGOUT */}
         <TouchableOpacity
           style={styles.logout}
           onPress={handleLogout}
@@ -256,12 +203,8 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 }
 
-// ─────────────────────────────
-// STYLES ALPHA
-// ─────────────────────────────
 const styles = {
   container: { flex: 1 },
-
 
   header: {
     flexDirection: 'row',
@@ -346,6 +289,39 @@ const styles = {
     color: '#64748b',
     fontSize: 11,
     marginTop: 4,
+  },
+
+  demoBadge: {
+    marginTop: 8,
+    color: '#38bdf8',
+    fontSize: 13,
+  },
+
+  progressCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+
+  progressCount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#38bdf8',
+    marginTop: 4,
+  },
+
+  progressLabel: {
+    fontSize: 14,
+    color: '#94a3b8',
+    marginBottom: 8,
+  },
+
+  progressDetail: {
+    fontSize: 13,
+    color: '#64748b',
   },
 
   streakCard: {

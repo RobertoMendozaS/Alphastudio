@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Linking,
   Share,
+  Alert,
   Animated,
   Easing,
   StatusBar,
@@ -17,17 +18,18 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { RoadmapNode, Resource } from '../types/roadmap';
+import { useRoadmapStore } from '../store/roadmapStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
 export default function RoadmapScreen({ route }: Props) {
-  const { roadmap } = route.params;
+  const routeRoadmap = route.params.roadmap;
+  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal } = useRoadmapStore();
+  const roadmap = currentRoadmap ?? routeRoadmap;
 
-  const [completedNodes, setCompletedNodes] = useState<string[]>(
-    roadmap.nodes
-      .filter((node: RoadmapNode) => node.data.isCompleted)
-      .map((node: RoadmapNode) => node.id)
-  );
+  useEffect(() => {
+    setCurrentRoadmap(routeRoadmap);
+  }, [routeRoadmap, setCurrentRoadmap]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -36,14 +38,6 @@ export default function RoadmapScreen({ route }: Props) {
   const completedCount = completedNodes.length;
   const progressPercent =
     totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
-
-  const toggleNodeCompleted = (nodeId: string) => {
-    setCompletedNodes((current) =>
-      current.includes(nodeId)
-        ? current.filter((id) => id !== nodeId)
-        : [...current, nodeId]
-    );
-  };
 
   useEffect(() => {
     Animated.parallel([
@@ -63,6 +57,31 @@ export default function RoadmapScreen({ route }: Props) {
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(console.error);
+  };
+
+  const getIconName = (type: string) => {
+    switch (type) {
+      case 'youtube': return 'logo-youtube';
+      case 'course': return 'school';
+      case 'documentation': return 'book';
+      case 'google': return 'logo-google';
+      default: return 'globe';
+    }
+  };
+
+  const getColorType = (type: string) => {
+    switch (type) {
+      case 'youtube': return '#FF0000';
+      case 'course': return '#A855F7';
+      case 'documentation': return '#3B82F6';
+      case 'google': return '#4285F4';
+      default: return '#6B7280';
+    }
+  };
+
+  const handleSaveLocal = async () => {
+    await saveCurrentRoadmapLocal();
+    Alert.alert('Ruta guardada', 'La ruta se guardó localmente en este dispositivo.');
   };
 
   const handleShare = async () => {
@@ -98,9 +117,14 @@ export default function RoadmapScreen({ route }: Props) {
           <Text style={styles.badgeTxt}>Roadmap</Text>
         </View>
 
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Ionicons name="share-social-outline" size={18} color="#06b6d4" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleSaveLocal} style={styles.shareBtn}>
+            <Ionicons name="save-outline" size={18} color="#06b6d4" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+            <Ionicons name="share-social-outline" size={18} color="#06b6d4" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Animated.View
@@ -230,9 +254,9 @@ export default function RoadmapScreen({ route }: Props) {
                             activeOpacity={0.8}
                           >
                             <Ionicons
-                              name="link-outline"
+                              name={getIconName(res.type) as any}
                               size={14}
-                              color="#06b6d4"
+                              color={getColorType(res.type)}
                             />
                             <Text style={styles.resourceText} numberOfLines={1}>
                               {res.title}
@@ -311,6 +335,11 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 11,
     fontWeight: '600',
+  },
+
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
 
   shareBtn: {

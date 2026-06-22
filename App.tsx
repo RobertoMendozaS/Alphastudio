@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './src/services/supabaseClient';
-import { Session } from '@supabase/supabase-js';
+import { useAuthStore } from './src/store/authStore';
+import type { Session } from '@supabase/supabase-js';
 import type { RootStackParamList } from './src/types/navigation';
 import type { Roadmap } from './src/types/roadmap';
 
@@ -11,6 +12,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RoadmapScreen from './src/screens/RoadmapScreen';
+import AppTabs from './src/navigation/AppTabs';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -72,15 +74,11 @@ const demoRoadmap: Roadmap = {
 };
 
 export default function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [initializing, setInitializing] = useState(true);
+  const { session, setSession, initializing, initializeAuth } = useAuthStore();
   const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setInitializing(false);
-    });
+    initializeAuth();
 
     const {
       data: { subscription },
@@ -89,7 +87,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [initializeAuth, setSession]);
 
   if (initializing) {
     return null;
@@ -98,11 +96,11 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        {session && session.user ? (
+        {session ? (
           <>
             <Stack.Screen
-              name="Home"
-              component={HomeScreen}
+              name="AppTabs"
+              component={AppTabs}
               options={{ headerShown: false }}
             />
             <Stack.Screen
