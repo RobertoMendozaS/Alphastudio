@@ -19,6 +19,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { RoadmapNode, Resource } from '../types/roadmap';
 import { useRoadmapStore } from '../store/roadmapStore';
+import { EmptyState } from '../screens/SkeletonComponents';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
@@ -163,138 +164,146 @@ export default function RoadmapScreen({ route }: Props) {
           </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.timeline}>
-            <View style={styles.line} />
+        {roadmap.nodes.length === 0 ? (
+          <EmptyState
+            icon="map-outline"
+            title="Ruta vacía"
+            subtitle="Esta ruta no tiene nodos de aprendizaje. Vuelve a generarla."
+          />
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.timeline}>
+              <View style={styles.line} />
 
-            {roadmap.nodes.map((node: RoadmapNode, index: number) => {
-              const isCompleted = completedNodes.includes(node.id);
-              const isLastNode = index === roadmap.nodes.length - 1;
+              {roadmap.nodes.map((node: RoadmapNode, index: number) => {
+                const isCompleted = completedNodes.includes(node.id);
+                const isLastNode = index === roadmap.nodes.length - 1;
 
-              return (
-                <View key={node.id} style={styles.nodeBlock}>
-                  <View style={styles.nodeRow}>
-                    <View style={styles.dotWrap}>
-                      <TouchableOpacity
-                        onPress={() => toggleNodeCompleted(node.id)}
-                        activeOpacity={0.8}
-                        style={[
-                          styles.checkCircle,
-                          isCompleted && styles.checkCircleCompleted,
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <Ionicons name="checkmark" size={15} color="#020617" />
-                        ) : (
-                          <Text style={styles.step}>{index + 1}</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.card,
-                        isCompleted && styles.cardCompleted,
-                      ]}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardTitleWrap}>
-                          <Text
-                            style={[
-                              styles.cardTitle,
-                              isCompleted && styles.cardTitleCompleted,
-                            ]}
-                          >
-                            {node.data.label}
-                          </Text>
-
-                          <Text style={styles.cardStatus}>
-                            {isCompleted ? 'Completado' : 'Pendiente'}
-                          </Text>
-                        </View>
-
+                return (
+                  <View key={node.id} style={styles.nodeBlock}>
+                    <View style={styles.nodeRow}>
+                      <View style={styles.dotWrap}>
                         <TouchableOpacity
                           onPress={() => toggleNodeCompleted(node.id)}
+                          activeOpacity={0.8}
                           style={[
-                            styles.checkButton,
-                            isCompleted && styles.checkButtonCompleted,
+                            styles.checkCircle,
+                            isCompleted && styles.checkCircleCompleted,
                           ]}
                         >
-                          <Ionicons
-                            name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                            size={18}
-                            color={isCompleted ? '#22c55e' : '#64748b'}
-                          />
-                          <Text
-                            style={[
-                              styles.checkButtonText,
-                              isCompleted && styles.checkButtonTextCompleted,
-                            ]}
-                          >
-                            {isCompleted ? 'Listo' : 'Marcar'}
-                          </Text>
+                          {isCompleted ? (
+                            <Ionicons name="checkmark" size={15} color="#020617" />
+                          ) : (
+                            <Text style={styles.step}>{index + 1}</Text>
+                          )}
                         </TouchableOpacity>
                       </View>
 
-                      <Text
+                      <View
                         style={[
-                          styles.cardDesc,
-                          isCompleted && styles.cardDescCompleted,
+                          styles.card,
+                          isCompleted && styles.cardCompleted,
                         ]}
                       >
-                        {node.data.description}
-                      </Text>
+                        <View style={styles.cardHeader}>
+                          <View style={styles.cardTitleWrap}>
+                            <Text
+                              style={[
+                                styles.cardTitle,
+                                isCompleted && styles.cardTitleCompleted,
+                              ]}
+                            >
+                              {node.data.label}
+                            </Text>
 
-                      <View style={styles.resources}>
-                        {node.data.resources.map((res: Resource, i: number) => (
+                            <Text style={styles.cardStatus}>
+                              {isCompleted ? 'Completado' : 'Pendiente'}
+                            </Text>
+                          </View>
+
                           <TouchableOpacity
-                            key={res.id ?? `r-${i}`}
-                            onPress={() => openLink(res.url)}
-                            style={styles.resource}
-                            activeOpacity={0.8}
+                            onPress={() => toggleNodeCompleted(node.id)}
+                            style={[
+                              styles.checkButton,
+                              isCompleted && styles.checkButtonCompleted,
+                            ]}
                           >
                             <Ionicons
-                              name={getIconName(res.type) as any}
-                              size={14}
-                              color={getColorType(res.type)}
+                              name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                              size={18}
+                              color={isCompleted ? '#22c55e' : '#64748b'}
                             />
-                            <Text style={styles.resourceText} numberOfLines={1}>
-                              {res.title}
+                            <Text
+                              style={[
+                                styles.checkButtonText,
+                                isCompleted && styles.checkButtonTextCompleted,
+                              ]}
+                            >
+                              {isCompleted ? 'Listo' : 'Marcar'}
                             </Text>
-                            <Ionicons
-                              name="open-outline"
-                              size={14}
-                              color="#475569"
-                            />
                           </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
+                        </View>
 
-                  {!isLastNode && (
-                    <View style={styles.edgeRow}>
-                      <View style={styles.edgeSpacer} />
-                      <View style={styles.edgeBox}>
-                        <View
+                        <Text
                           style={[
-                            styles.edgeLine,
-                            isCompleted && styles.edgeLineCompleted,
+                            styles.cardDesc,
+                            isCompleted && styles.cardDescCompleted,
                           ]}
-                        />
-                        <Ionicons
-                          name="arrow-down"
-                          size={16}
-                          color={isCompleted ? '#22c55e' : '#334155'}
-                        />
+                        >
+                          {node.data.description}
+                        </Text>
+
+                        <View style={styles.resources}>
+                          {node.data.resources.map((res: Resource, i: number) => (
+                            <TouchableOpacity
+                              key={res.id ?? `r-${i}`}
+                              onPress={() => openLink(res.url)}
+                              style={styles.resource}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons
+                                name={getIconName(res.type) as any}
+                                size={14}
+                                color={getColorType(res.type)}
+                              />
+                              <Text style={styles.resourceText} numberOfLines={1}>
+                                {res.title}
+                              </Text>
+                              <Ionicons
+                                name="open-outline"
+                                size={14}
+                                color="#475569"
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
                       </View>
                     </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
+
+                    {!isLastNode && (
+                      <View style={styles.edgeRow}>
+                        <View style={styles.edgeSpacer} />
+                        <View style={styles.edgeBox}>
+                          <View
+                            style={[
+                              styles.edgeLine,
+                              isCompleted && styles.edgeLineCompleted,
+                            ]}
+                          />
+                          <Ionicons
+                            name="arrow-down"
+                            size={16}
+                            color={isCompleted ? '#22c55e' : '#334155'}
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+        )}
       </Animated.View>
     </View>
   );

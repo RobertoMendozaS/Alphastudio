@@ -25,6 +25,15 @@ export const signOut = async () => {
   if (error) throw new Error(error.message);
 };
 
+export const updateProfile = async (userId: string, updates: { display_name?: string; avatar_url?: string }) => {
+  const { error } = await supabase.from('profiles').upsert(
+    { id: userId, ...updates, updated_at: new Date().toISOString() },
+    { onConflict: 'id' }
+  );
+  if (error) throw new Error(error.message);
+  return true;
+};
+
 export const performCheckIn = async (userId: string) => {
   const { error } = await supabase.from('check_ins').insert([{ user_id: userId }]);
   if (error) {

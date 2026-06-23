@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, Alert,
-  StatusBar, Animated, Easing, Platform
+  StatusBar, Animated, Easing, Platform,
+  Modal, TextInput,
 } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../types/navigation';
@@ -10,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
 import { useRoadmapStore } from '../store/roadmapStore';
-import { performCheckIn, getStreak } from '../services/authService';
+import { performCheckIn, getStreak, updateProfile } from '../services/authService';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
@@ -21,6 +22,10 @@ export default function ProfileScreen({ navigation }: Props) {
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -60,6 +65,30 @@ export default function ProfileScreen({ navigation }: Props) {
     ]).start();
     return unsubscribe;
   }, [navigation, loadProfile, fadeAnim, slideAnim]);
+
+  const handleOpenEdit = () => {
+    setEditDisplayName(user?.email ?? '');
+    setEditAvatarUrl('');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setEditSaving(true);
+    try {
+      await updateProfile(user.id, {
+        display_name: editDisplayName,
+        avatar_url: editAvatarUrl || undefined,
+      });
+      Alert.alert('Perfil actualizado', 'Los cambios se guardaron correctamente.');
+      setEditModalVisible(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error al actualizar perfil';
+      Alert.alert('Error', message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const handleCheckIn = async () => {
     if (!user) return;
@@ -146,7 +175,12 @@ export default function ProfileScreen({ navigation }: Props) {
           <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.avatar}>
             <Ionicons name="person" size={28} color="#fff" />
           </LinearGradient>
-          <Text style={styles.email}>{userEmail}</Text>
+          <View style={styles.emailRow}>
+            <Text style={styles.email}>{userEmail}</Text>
+            <TouchableOpacity onPress={handleOpenEdit} activeOpacity={0.7}>
+              <Ionicons name="pencil" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.sub}>Usuario Alpha AI</Text>
           {isDemo ? <Text style={styles.demoBadge}>Modo demo sin Supabase</Text> : null}
         </View>
@@ -199,6 +233,46 @@ export default function ProfileScreen({ navigation }: Props) {
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </Animated.View>
+      <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Editar perfil</Text>
+            <Text style={styles.modalLabel}>Nombre</Text>
+            <View style={styles.modalInputBox}>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Tu nombre"
+                placeholderTextColor="#334155"
+                value={editDisplayName}
+                onChangeText={setEditDisplayName}
+              />
+            </View>
+            <Text style={styles.modalLabel}>Avatar URL (opcional)</Text>
+            <View style={styles.modalInputBox}>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="https://ejemplo.com/avatar.jpg"
+                placeholderTextColor="#334155"
+                value={editAvatarUrl}
+                onChangeText={setEditAvatarUrl}
+                autoCapitalize="none"
+              />
+            </View>
+            <TouchableOpacity style={styles.modalBtnWrap} onPress={handleSaveProfile} activeOpacity={0.85} disabled={editSaving}>
+              <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.modalBtn}>
+                {editSaving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalBtnText}>Guardar</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModalVisible(false)} activeOpacity={0.8} disabled={editSaving}>
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -277,6 +351,12 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+  },
+
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 
   email: {
@@ -399,5 +479,89 @@ const styles = {
     color: '#ef4444',
     fontWeight: '600',
     marginLeft: 8,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 22,
+  },
+
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 18,
+    padding: 22,
+  },
+
+  modalTitle: {
+    color: '#e2e8f0',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+
+  modalLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginBottom: 6,
+  },
+
+  modalInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0c1a2e',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+
+  modalInput: {
+    flex: 1,
+    color: '#e2e8f0',
+    fontSize: 13,
+  },
+
+  modalBtnWrap: {
+    marginTop: 6,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+
+  modalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+
+  modalBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+
+  modalCancelBtn: {
+    marginTop: 10,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+
+  modalCancelText: {
+    color: '#e2e8f0',
+    fontWeight: '600',
+    fontSize: 13.5,
   },
 } as const;

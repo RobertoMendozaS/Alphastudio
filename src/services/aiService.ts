@@ -4,9 +4,58 @@ import { parseRoadmap } from '../utils/roadmapValidator';
 const XAI_API_KEY = process.env.EXPO_PUBLIC_XAI_API_KEY!;
 const XAI_API_URL = 'https://api.x.ai/v1/chat/completions';
 
-export const generateRoadmap = async (userQuery: string, accessToken: string): Promise<Roadmap> => {
-  console.log("Usando datos simulados (Mock) porque la API de xAI no tiene créditos.");
-  
+type ErrorCategory = 'auth' | 'rate_limit' | 'server' | 'network';
+
+function categorizeError(error: any): ErrorCategory {
+  if (error?.status === 401 || error?.status === 403) return 'auth';
+  if (error?.status === 429) return 'rate_limit';
+  if (error?.status && error?.status >= 500) return 'server';
+  return 'network';
+}
+
+async function generateRoadmapReal(userQuery: string): Promise<Roadmap> {
+  if (!XAI_API_KEY || XAI_API_KEY === 'undefined' || XAI_API_KEY === '') {
+    throw Object.assign(new Error('API key de xAI no configurada'), { status: 401 });
+  }
+
+  const response = await fetch(XAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${XAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-beta',
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un planificador de rutas de aprendizaje. Genera una ruta en formato JSON con title, description, nodes (label, description, resources con title/url/type), y edges. Responde SOLO con el JSON.',
+        },
+        {
+          role: 'user',
+          content: userQuery,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Error de API: ${response.status} ${response.statusText}`);
+    (error as any).status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('La API devolvió una respuesta vacía');
+  }
+
+  return parseRoadmap(content);
+}
+
+async function generateRoadmapMock(userQuery: string): Promise<Roadmap> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
@@ -53,6 +102,35 @@ export const generateRoadmap = async (userQuery: string, accessToken: string): P
           { id: 'e2-3', source: 'n2', target: 'n3' }
         ]
       });
-    }, 1500); // Simulamos 1.5 segundos de carga
+    }, 1500);
   });
+}
+
+export const generateRoadmap = async (userQuery: string, accessToken: string): Promise<Roadmap> => {
+  const delays = [1000, 2000];
+  let lastError: any;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await generateRoadmapReal(userQuery);
+    } catch (error: any) {
+      lastError = error;
+      const category = categorizeError(error);
+
+      if (category === 'auth') {
+        throw error;
+      }
+
+      if (attempt === 2) break;
+
+      if (category === 'rate_limit') {
+        await new Promise(r => setTimeout(r, delays[attempt] * 2));
+      } else {
+        await new Promise(r => setTimeout(r, delays[attempt]));
+      }
+    }
+  }
+
+  console.log("Usando datos simulados (Mock) como fallback tras fallo de API.");
+  return generateRoadmapMock(userQuery);
 };

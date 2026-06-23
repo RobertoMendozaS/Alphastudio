@@ -13,11 +13,20 @@ import type { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { useRoadmapStore } from '../store/roadmapStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import AlphaLogo from '../components/AlphaLogo';
+import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Home'>,
   NativeStackScreenProps<RootStackParamList>
 >;
+
+const SUGGESTIONS = [
+  'Python desde cero',
+  'JavaScript avanzado',
+  'Machine Learning',
+  'React Native',
+  'Inglés básico',
+];
 
 export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
@@ -117,9 +126,17 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
             )}
           </TouchableOpacity>
+
+          {loading && (
+            <View style={styles.skeletonContainer}>
+              <SkeletonHistoryCard />
+              <SkeletonHistoryCard />
+              <SkeletonHistoryCard />
+            </View>
+          )}
         </View>
 
-        {recentTopics.length > 0 && (
+        {!loading && recentTopics.length > 0 && (
           <View style={styles.topicsSection}>
             <Text style={styles.topicsTitle}>Temas recientes</Text>
             <View style={styles.chipsContainer}>
@@ -131,6 +148,25 @@ export default function HomeScreen({ navigation }: Props) {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="time-outline" size={14} color="#94a3b8" />
+                  <Text style={styles.chipText}>{topic}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {!loading && (
+          <View style={styles.topicsSection}>
+            <Text style={styles.topicsTitle}>Sugerencias</Text>
+            <View style={styles.chipsContainer}>
+              {SUGGESTIONS.map((topic, index) => (
+                <TouchableOpacity
+                  key={`suggestion-${index}`}
+                  style={styles.chip}
+                  onPress={() => selectTopic(topic)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="bulb-outline" size={14} color="#94a3b8" />
                   <Text style={styles.chipText}>{topic}</Text>
                 </TouchableOpacity>
               ))}
@@ -230,5 +266,8 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontSize: 13,
     fontWeight: '500',
+  },
+  skeletonContainer: {
+    paddingTop: 20,
   },
 });
