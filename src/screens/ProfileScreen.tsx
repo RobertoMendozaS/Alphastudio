@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity,
   ActivityIndicator, Alert,
   StatusBar, Animated, Easing, Platform,
-  Modal, TextInput,
+  Modal, TextInput, ScrollView, StyleSheet,
 } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../types/navigation';
@@ -157,7 +157,7 @@ export default function ProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} />
+      <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
         <Ionicons
           name="arrow-back"
@@ -179,6 +179,7 @@ export default function ProfileScreen({ navigation }: Props) {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
         <View style={styles.userCard}>
           <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.avatar}>
             <Ionicons name="person" size={28} color="#fff" />
@@ -251,6 +252,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <Ionicons name="log-out-outline" size={20} color="#ef4444" />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
+        </ScrollView>
       </Animated.View>
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
