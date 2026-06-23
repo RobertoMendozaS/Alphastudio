@@ -14,6 +14,7 @@ type RoadmapState = {
   toggleNodeCompleted: (nodeId: string) => void;
   saveCurrentRoadmapLocal: () => Promise<void>;
   saveRoadmapToHistory: (roadmap: Roadmap) => Promise<void>;
+  removeRoadmapFromHistory: (title: string) => Promise<void>;
   clearRoadmap: () => void;
   loadLocalRoadmaps: () => void;
 };
@@ -76,6 +77,19 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       const stored = await AsyncStorage.getItem('@roadmap_history');
       const history = stored ? JSON.parse(stored) : [];
       const updated = [roadmap, ...history.filter((r: Roadmap) => r.title !== roadmap.title)].slice(0, 20);
+      await AsyncStorage.setItem('@roadmap_history', JSON.stringify(updated));
+      set({ localRoadmaps: updated });
+    } catch {
+      // Silent fail
+    }
+  },
+
+  removeRoadmapFromHistory: async (title) => {
+    try {
+      const stored = await AsyncStorage.getItem('@roadmap_history');
+      if (!stored) return;
+      const history = JSON.parse(stored);
+      const updated = history.filter((r: Roadmap) => r.title !== title);
       await AsyncStorage.setItem('@roadmap_history', JSON.stringify(updated));
       set({ localRoadmaps: updated });
     } catch {

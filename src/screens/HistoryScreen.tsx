@@ -119,7 +119,7 @@ export default function HistoryScreen({ navigation }: Props) {
   const [searchFocused, setSearchFocused] = useState(false);
 
   const isDemo = useAuthStore((state) => state.isDemo);
-  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap } = useRoadmapStore();
+  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap, removeRoadmapFromHistory } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
@@ -208,11 +208,6 @@ export default function HistoryScreen({ navigation }: Props) {
   };
 
   const handleDelete = (roadmapId: string, title: string) => {
-    if (isDemo) {
-      Alert.alert('No disponible', 'Eliminar rutas no está disponible en modo demo.');
-      return;
-    }
-
     Alert.alert(
       'Eliminar ruta',
       `¿Eliminar "${title}"? Esta acción no se puede deshacer.`,
@@ -222,12 +217,8 @@ export default function HistoryScreen({ navigation }: Props) {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deleteRoadmap(roadmapId);
-              loadHistory(true);
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
-            }
+            await removeRoadmapFromHistory(title);
+            loadHistory(true);
           },
         },
       ]
