@@ -125,37 +125,34 @@ export default function HistoryScreen({ navigation }: Props) {
   const slideAnim = useRef(new Animated.Value(22)).current;
 
   const loadHistory = useCallback(async (silent = false) => {
-    if (isDemo) {
-      await loadLocalRoadmaps();
-      const data = useRoadmapStore.getState().localRoadmaps;
-      if (!silent) setLoading(true);
-      const summaries: RoadmapSummary[] = data.map(r => ({
-        id: r.title,
-        title: r.title,
-        description: r.description ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
-      setRoadmaps(summaries);
-      setFiltered(summaries);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
+    await loadLocalRoadmaps();
+    const data = useRoadmapStore.getState().localRoadmaps;
     if (!silent) setLoading(true);
-    try {
-      const data = await getRoadmapHistory(session.user.id);
-      setRoadmaps(data);
-      setFiltered(data);
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    const summaries: RoadmapSummary[] = data.map(r => ({
+      id: r.title,
+      title: r.title,
+      description: r.description ?? null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+    setRoadmaps(summaries);
+    setFiltered(summaries);
+    setLoading(false);
+    setRefreshing(false);
+
+    if (!isDemo) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        try {
+          const remote = await getRoadmapHistory(session.user.id);
+          if (remote.length > 0) {
+            setRoadmaps(remote);
+            setFiltered(remote);
+          }
+        } catch {
+          // Silent: fallback to local
+        }
+      }
     }
   }, [isDemo, loadLocalRoadmaps]);
 
@@ -188,12 +185,10 @@ export default function HistoryScreen({ navigation }: Props) {
   }, [search, roadmaps]);
 
   const handleOpen = async (roadmapId: string) => {
-    if (isDemo) {
-      const roadmap = localRoadmaps.find((r: Roadmap) => r.title === roadmapId);
-      if (roadmap) {
-        setCurrentRoadmap(roadmap);
-        navigation.navigate('Roadmap', { roadmap });
-      }
+    const local = localRoadmaps.find((r: Roadmap) => r.title === roadmapId);
+    if (local) {
+      setCurrentRoadmap(local);
+      navigation.navigate('Roadmap', { roadmap: local });
       return;
     }
 
