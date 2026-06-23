@@ -118,7 +118,8 @@ export const generateRoadmap = async (userQuery: string, accessToken: string): P
       const category = categorizeError(error);
 
       if (category === 'auth') {
-        throw error;
+        console.warn('API key no configurada — usando mock como fallback');
+        return generateRoadmapMock(userQuery);
       }
 
       if (attempt === 2) break;
