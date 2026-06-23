@@ -14,6 +14,7 @@ import { useRoadmapStore } from '../store/roadmapStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import AlphaLogo from '../components/AlphaLogo';
 import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
+import SurveyModal from '../components/SurveyModal';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Home'>,
@@ -31,8 +32,10 @@ const SUGGESTIONS = [
 export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -68,11 +71,29 @@ export default function HomeScreen({ navigation }: Props) {
       await saveRecentTopic(query);
       await saveRoadmapToHistory(roadmapData);
       setCurrentRoadmap(roadmapData);
-      navigation.navigate('Roadmap', { roadmap: roadmapData });
+      setPendingRoadmap(roadmapData);
+      setShowSurvey(true);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Ocurrió un error al generar la ruta.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSurveySubmit = async (response: any) => {
+    await saveSurveyResponse(response);
+    setShowSurvey(false);
+    if (pendingRoadmap) {
+      navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
+      setPendingRoadmap(null);
+    }
+  };
+
+  const handleSurveySkip = () => {
+    setShowSurvey(false);
+    if (pendingRoadmap) {
+      navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
+      setPendingRoadmap(null);
     }
   };
 
@@ -175,6 +196,12 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         )}
       </Animated.View>
+      <SurveyModal
+        visible={showSurvey}
+        topic={query}
+        onSubmit={handleSurveySubmit}
+        onSkip={handleSurveySkip}
+      />
     </View>
   );
 }

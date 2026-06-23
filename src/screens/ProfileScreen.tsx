@@ -18,6 +18,8 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 export default function ProfileScreen({ navigation }: Props) {
   const { user, isDemo, logout } = useAuthStore();
   const currentRoadmap = useRoadmapStore((state) => state.currentRoadmap);
+  const surveyResponses = useRoadmapStore((state) => state.surveyResponses);
+  const loadSurveyResponses = useRoadmapStore((state) => state.loadSurveyResponses);
   const [streak, setStreak] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editAvatarUrl, setEditAvatarUrl] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [surveyModalVisible, setSurveyModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -112,6 +115,11 @@ export default function ProfileScreen({ navigation }: Props) {
     } finally {
       setCheckingIn(false);
     }
+  };
+
+  const handleViewSurveyData = () => {
+    loadSurveyResponses();
+    setSurveyModalVisible(true);
   };
 
   const handleLogout = async () => {
@@ -225,6 +233,17 @@ export default function ProfileScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={18} color="#475569" />
         </TouchableOpacity>
         <TouchableOpacity
+          style={styles.menuItem}
+          onPress={handleViewSurveyData}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="clipboard-outline" size={20} color="#94a3b8" />
+          <Text style={styles.menuText}>Datos de encuestas</Text>
+          <View style={styles.surveyBadge}>
+            <Text style={styles.surveyBadgeText}>{surveyResponses.length}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.logout}
           onPress={handleLogout}
           activeOpacity={0.8}
@@ -269,6 +288,34 @@ export default function ProfileScreen({ navigation }: Props) {
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModalVisible(false)} activeOpacity={0.8} disabled={editSaving}>
               <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={surveyModalVisible} transparent animationType="fade" onRequestClose={() => setSurveyModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Datos de encuestas</Text>
+            <Text style={styles.modalLabel}>{surveyResponses.length} respuestas recopiladas</Text>
+            {surveyResponses.length === 0 ? (
+              <Text style={{ color: '#64748b', fontSize: 13, textAlign: 'center', marginVertical: 20 }}>
+                Aún no hay respuestas. Las encuestas aparecen al generar una ruta.
+              </Text>
+            ) : (
+              <View style={{ maxHeight: 300 }}>
+                {surveyResponses.slice().reverse().map((r, i) => (
+                  <View key={i} style={{ backgroundColor: '#0c1a2e', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#1e293b' }}>
+                    <Text style={{ color: '#e2e8f0', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>{r.topic}</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 11 }}>Nivel: {r.knowledgeLevel} | Tiempo: {r.timeCommitment} | Objetivo: {r.mainGoal}</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 11 }}>Experiencia: {'★'.repeat(r.experience)}{'☆'.repeat(5 - r.experience)}</Text>
+                    <Text style={{ color: '#475569', fontSize: 10, marginTop: 4 }}>{new Date(r.timestamp).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setSurveyModalVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.modalCancelText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -479,6 +526,19 @@ const styles = {
     color: '#ef4444',
     fontWeight: '600',
     marginLeft: 8,
+  },
+
+  surveyBadge: {
+    backgroundColor: '#06b6d4',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 'auto',
+  },
+  surveyBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   modalOverlay: {
