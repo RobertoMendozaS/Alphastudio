@@ -12,6 +12,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { useRoadmapStore } from '../store/roadmapStore';
 import { LinearGradient } from 'expo-linear-gradient';
+import AlphaLogo from '../components/AlphaLogo';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Home'>,
@@ -84,6 +85,7 @@ export default function HomeScreen({ navigation }: Props) {
         ]}
       >
         <View style={styles.headerSection}>
+          <AlphaLogo />
           <Text style={styles.title}>AlphaStudio AI</Text>
           <Text style={styles.subtitle}>Tu ruta de aprendizaje inteligente y visual</Text>
         </View>
