@@ -32,7 +32,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -66,6 +66,7 @@ export default function HomeScreen({ navigation }: Props) {
       }
       const roadmapData = await generateRoadmap(query, session.access_token);
       await saveRecentTopic(query);
+      await saveRoadmapToHistory(roadmapData);
       setCurrentRoadmap(roadmapData);
       navigation.navigate('Roadmap', { roadmap: roadmapData });
     } catch (error: any) {
