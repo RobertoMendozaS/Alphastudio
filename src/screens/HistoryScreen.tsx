@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { supabase } from '../services/supabaseClient';
 import {
-  getRoadmapHistory, getRoadmapById, deleteRoadmap,
+  getRoadmapHistory, getRoadmapById,
   rowToRoadmap, RoadmapSummary,
 } from '../services/roadmapService';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -43,16 +43,18 @@ function RoadmapCard({
   onOpen,
   onDelete,
   index,
-  isDemoMode = false,
+  deleting,
 }: {
   item: RoadmapSummary;
   onOpen: () => void;
   onDelete: () => void;
   index: number;
-  isDemoMode?: boolean;
+  deleting?: boolean;
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const slideX = useRef(new Animated.Value(20)).current;
+  const deleteAnim = useRef(new Animated.Value(1)).current;
+  const deleteSlide = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -72,8 +74,25 @@ function RoadmapCard({
     ]).start();
   }, []);
 
+  useEffect(() => {
+    if (deleting) {
+      Animated.parallel([
+        Animated.timing(deleteAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(deleteSlide, {
+          toValue: -100,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [deleting]);
+
   return (
-    <Animated.View style={{ opacity: entryAnim, transform: [{ translateX: slideX }] }}>
+    <Animated.View style={{ opacity: deleteAnim, transform: [{ translateX: deleteSlide }] }}>
       <TouchableOpacity
         style={styles.card}
         onPress={onOpen}
@@ -91,20 +110,18 @@ function RoadmapCard({
           <View style={styles.cardMeta}>
             <Ionicons name="time-outline" size={11} color="#334155" />
             <Text style={styles.cardDate}>
-              {isDemoMode ? 'Guardado local' : relativeDate(item.created_at)}
+              {relativeDate(item.created_at)}
             </Text>
           </View>
         </View>
 
-        {!isDemoMode && (
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={onDelete}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="trash-outline" size={18} color="#ef4444" />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={onDelete}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="trash-outline" size={18} color="#ef4444" />
+        </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -117,6 +134,7 @@ export default function HistoryScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isDemo = useAuthStore((state) => state.isDemo);
   const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap, removeRoadmapFromHistory } = useRoadmapStore();
@@ -216,9 +234,13 @@ export default function HistoryScreen({ navigation }: Props) {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: async () => {
-            await removeRoadmapFromHistory(title);
-            loadHistory(true);
+          onPress: () => {
+            setDeletingId(roadmapId);
+            setTimeout(async () => {
+              await removeRoadmapFromHistory(title);
+              setDeletingId(null);
+              loadHistory(true);
+            }, 300);
           },
         },
       ]
@@ -327,7 +349,7 @@ export default function HistoryScreen({ navigation }: Props) {
               <RoadmapCard
                 item={item}
                 index={index}
-                isDemoMode={isDemo}
+                deleting={deletingId === item.id}
                 onOpen={() => handleOpen(item.id)}
                 onDelete={() => handleDelete(item.id, item.title)}
               />
