@@ -25,7 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
 export default function RoadmapScreen({ route }: Props) {
   const routeRoadmap = route.params.roadmap;
-  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal } = useRoadmapStore();
+  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory } = useRoadmapStore();
   const roadmap = currentRoadmap ?? routeRoadmap;
 
   useEffect(() => {
@@ -81,8 +81,9 @@ export default function RoadmapScreen({ route }: Props) {
   };
 
   const handleSaveLocal = async () => {
+    await saveRoadmapToHistory(roadmap);
     await saveCurrentRoadmapLocal();
-    Alert.alert('Ruta guardada', 'La ruta se guardó localmente en este dispositivo.');
+    Alert.alert('Ruta guardada', 'La ruta se guardó en tu historial.');
   };
 
   const handleShare = async () => {
