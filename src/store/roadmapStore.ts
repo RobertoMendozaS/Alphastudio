@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Roadmap } from '../types/roadmap';
 import type { SurveyResponse } from '../types/survey';
 import type { TestResult } from '../types/test';
+import { syncTestResult } from '../services/testService';
 
 type RoadmapState = {
   currentRoadmap: Roadmap | null;
@@ -24,6 +25,7 @@ type RoadmapState = {
   saveSurveyResponse: (response: SurveyResponse) => Promise<void>;
   loadSurveyResponses: () => Promise<void>;
   saveTestResult: (result: TestResult) => Promise<void>;
+  saveAndSyncTestResult: (result: TestResult, userId: string) => Promise<void>;
   loadTestResults: () => Promise<void>;
 };
 
@@ -143,6 +145,23 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       set({ testResults: all });
     } catch {
       // Silent fail
+    }
+  },
+
+  saveAndSyncTestResult: async (result, userId) => {
+    try {
+      const stored = await AsyncStorage.getItem('@test_results');
+      const all = stored ? JSON.parse(stored) : [];
+      all.push(result);
+      await AsyncStorage.setItem('@test_results', JSON.stringify(all));
+      set({ testResults: all });
+    } catch {
+      // Silent fail
+    }
+    try {
+      await syncTestResult(result, userId);
+    } catch {
+      // Silent fail - se sincronizará después manualmente
     }
   },
 

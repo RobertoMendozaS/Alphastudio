@@ -22,12 +22,13 @@ import { useRoadmapStore } from '../store/roadmapStore';
 import { EmptyState } from '../screens/SkeletonComponents';
 import TestModal from '../components/TestModal';
 import { generateTestQuestions } from '../services/aiService';
+import { supabase } from '../services/supabaseClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
 export default function RoadmapScreen({ route }: Props) {
   const routeRoadmap = route.params.roadmap;
-  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory, saveTestResult, testResults } = useRoadmapStore();
+  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory, saveAndSyncTestResult, testResults } = useRoadmapStore();
   const roadmap = currentRoadmap ?? routeRoadmap;
 
   const [showPostTest, setShowPostTest] = useState(false);
@@ -101,7 +102,13 @@ export default function RoadmapScreen({ route }: Props) {
 
   const handlePostTestSubmit = async (result: any) => {
     const postResult = { ...result, type: 'post' as const };
-    await saveTestResult(postResult);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await saveAndSyncTestResult(postResult, session.user.id);
+    } else {
+      const { saveTestResult } = useRoadmapStore.getState();
+      await saveTestResult(postResult);
+    }
     setShowPostTest(false);
     const preTest = testResults.find((r: any) => r.topic === result.topic && r.type === 'pre');
     if (preTest) {

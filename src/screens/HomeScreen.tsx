@@ -39,7 +39,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [preTestQuestions, setPreTestQuestions] = useState<any[]>([]);
   const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveTestResult } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveAndSyncTestResult } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -103,7 +103,13 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const handlePreTestSubmit = async (result: any) => {
-    await saveTestResult(result);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await saveAndSyncTestResult(result, session.user.id);
+    } else {
+      const { saveTestResult } = useRoadmapStore.getState();
+      await saveTestResult(result);
+    }
     setShowPreTest(false);
     if (pendingRoadmap) {
       navigation.navigate('Roadmap', { roadmap: pendingRoadmap });

@@ -11,7 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
 import { useRoadmapStore } from '../store/roadmapStore';
+import { supabase } from '../services/supabaseClient';
 import { performCheckIn, getStreak, updateProfile } from '../services/authService';
+import { getTestStats, syncTestResult } from '../services/testService';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
@@ -125,6 +127,39 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const [testModalVisible, setTestModalVisible] = useState(false);
+  const [statsModalVisible, setStatsModalVisible] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleViewStats = async () => {
+    try {
+      const data = await getTestStats();
+      setStats(data);
+    } catch {
+      setStats(null);
+    }
+    setStatsModalVisible(true);
+  };
+
+  const handleSyncNow = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      Alert.alert('Sin sesión', 'Inicia sesión para sincronizar datos.');
+      return;
+    }
+    setSyncing(true);
+    let synced = 0;
+    for (const r of testResults) {
+      try {
+        await syncTestResult(r, session.user.id);
+        synced++;
+      } catch {
+        // skip already synced
+      }
+    }
+    setSyncing(false);
+    Alert.alert('Sincronización completa', `${synced} tests subidos a la nube.`);
+  };
 
   const handleViewTestData = () => {
     loadTestResults();
@@ -255,6 +290,25 @@ export default function ProfileScreen({ navigation }: Props) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.menuItem}
+          onPress={handleViewStats}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="bar-chart-outline" size={20} color="#94a3b8" />
+          <Text style={styles.menuText}>Estadísticas de tests</Text>
+          <Ionicons name="chevron-forward" size={18} color="#475569" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={handleSyncNow}
+          activeOpacity={0.8}
+          disabled={syncing}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color="#94a3b8" />
+          <Text style={styles.menuText}>{syncing ? 'Sincronizando...' : 'Sincronizar datos'}</Text>
+          {syncing && <ActivityIndicator size="small" color="#06b6d4" />}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
           onPress={handleViewTestData}
           activeOpacity={0.8}
         >
@@ -337,6 +391,60 @@ export default function ProfileScreen({ navigation }: Props) {
               </View>
             )}
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setSurveyModalVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.modalCancelText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={statsModalVisible} transparent animationType="fade" onRequestClose={() => setStatsModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Estadísticas de tests</Text>
+            {!stats ? (
+              <ActivityIndicator color="#06b6d4" style={{ marginVertical: 30 }} />
+            ) : (
+              <>
+                <Text style={{ color: '#64748b', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
+                  Datos agregados de todos los usuarios
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 28, fontWeight: '800', color: '#e2e8f0' }}>{stats.total}</Text>
+                    <Text style={{ fontSize: 11, color: '#64748b' }}>Tests</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 28, fontWeight: '800', color: '#06b6d4' }}>{stats.preAvg}%</Text>
+                    <Text style={{ fontSize: 11, color: '#64748b' }}>Pre‑test</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 28, fontWeight: '800', color: '#22c55e' }}>{stats.postAvg}%</Text>
+                    <Text style={{ fontSize: 11, color: '#64748b' }}>Post‑test</Text>
+                  </View>
+                </View>
+                {stats.improvement !== 0 && (
+                  <View style={{ backgroundColor: '#0c1a2e', borderRadius: 12, padding: 14, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#1e293b' }}>
+                    <Text style={{ fontSize: 14, color: '#94a3b8' }}>Mejora promedio</Text>
+                    <Text style={{ fontSize: 32, fontWeight: '800', color: stats.improvement > 0 ? '#22c55e' : '#ef4444' }}>
+                      {stats.improvement > 0 ? '+' : ''}{stats.improvement}%
+                    </Text>
+                  </View>
+                )}
+                {stats.byTopic.length > 0 && (
+                  <View style={{ maxHeight: 150 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#e2e8f0', marginBottom: 8 }}>Por tema</Text>
+                    {stats.byTopic.map((t: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#0c1a2e', borderRadius: 8, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: '#1e293b' }}>
+                        <Text style={{ color: '#e2e8f0', fontSize: 12, flex: 1 }}>{t.topic}</Text>
+                        <Text style={{ color: '#06b6d4', fontSize: 12, fontWeight: '600' }}>Pre {Math.round(t.pre)}%</Text>
+                        <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: '600', marginLeft: 8 }}>Post {Math.round(t.post)}%</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setStatsModalVisible(false)} activeOpacity={0.8}>
               <Text style={styles.modalCancelText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
