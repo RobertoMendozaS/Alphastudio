@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AlphaLogo from '../components/AlphaLogo';
 import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
 import SurveyModal from '../components/SurveyModal';
+import TestModal from '../components/TestModal';
+import { generateTestQuestions } from '../services/aiService';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Home'>,
@@ -33,9 +35,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [showPreTest, setShowPreTest] = useState(false);
+  const [preTestQuestions, setPreTestQuestions] = useState<any[]>([]);
   const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveTestResult } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -83,14 +87,32 @@ export default function HomeScreen({ navigation }: Props) {
   const handleSurveySubmit = async (response: any) => {
     await saveSurveyResponse(response);
     setShowSurvey(false);
+    const questions = await generateTestQuestions(query);
+    setPreTestQuestions(questions);
+    setShowPreTest(true);
+  };
+
+  const handleSurveySkip = () => {
+    setShowSurvey(false);
+    const navigateToRoadmap = async () => {
+      const questions = await generateTestQuestions(query);
+      setPreTestQuestions(questions);
+      setShowPreTest(true);
+    };
+    navigateToRoadmap();
+  };
+
+  const handlePreTestSubmit = async (result: any) => {
+    await saveTestResult(result);
+    setShowPreTest(false);
     if (pendingRoadmap) {
       navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
       setPendingRoadmap(null);
     }
   };
 
-  const handleSurveySkip = () => {
-    setShowSurvey(false);
+  const handlePreTestSkip = () => {
+    setShowPreTest(false);
     if (pendingRoadmap) {
       navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
       setPendingRoadmap(null);
@@ -201,6 +223,13 @@ export default function HomeScreen({ navigation }: Props) {
         topic={query}
         onSubmit={handleSurveySubmit}
         onSkip={handleSurveySkip}
+      />
+      <TestModal
+        visible={showPreTest}
+        title={query}
+        questions={preTestQuestions}
+        onSubmit={handlePreTestSubmit}
+        onSkip={handlePreTestSkip}
       />
     </View>
   );

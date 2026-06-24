@@ -1,5 +1,6 @@
 import { Roadmap } from '../types/roadmap';
 import { parseRoadmap } from '../utils/roadmapValidator';
+import type { TestQuestion } from '../types/test';
 
 const XAI_API_KEY = process.env.EXPO_PUBLIC_XAI_API_KEY!;
 const XAI_API_URL = 'https://api.x.ai/v1/chat/completions';
@@ -134,4 +135,70 @@ export const generateRoadmap = async (userQuery: string, accessToken: string): P
 
   console.log("Usando datos simulados (Mock) como fallback tras fallo de API.");
   return generateRoadmapMock(userQuery);
+};
+
+function generateTestMock(topic: string): TestQuestion[] {
+  const lower = topic.toLowerCase();
+  const questions: TestQuestion[] = [
+    {
+      question: `¿Cuál es el primer paso recomendado para aprender "${topic}"?`,
+      options: ['Leer documentación avanzada', 'Entender los fundamentos', 'Crear un proyecto complejo', 'Ver videos sin práctica'],
+      correctIndex: 1,
+    },
+    {
+      question: `¿Qué recurso es más útil al empezar con "${topic}"?`,
+      options: ['Foros de discusión', 'Tutoriales interactivos para principiantes', 'Código fuente de proyectos grandes', 'Artículos de investigación'],
+      correctIndex: 1,
+    },
+    {
+      question: `¿Cuál es una buena práctica al estudiar "${topic}"?`,
+      options: ['Solo leer teoría', 'Practicar con ejercicios pequeños', 'Memorizar sin entender', 'Evitar preguntar dudas'],
+      correctIndex: 1,
+    },
+    {
+      question: `¿Qué herramienta usarías para aplicar "${topic}"?`,
+      options: ['Un bloc de notas', ['VS Code', 'un editor de código'].includes(lower) ? 'Un editor de código' : 'Un entorno de desarrollo adecuado', 'Solo papel y lápiz', 'Ninguna, solo teoría'],
+      correctIndex: 1,
+    },
+    {
+      question: `Después de aprender "${topic}", ¿qué deberías hacer?`,
+      options: ['Olvidarlo', 'Construir un proyecto personal', 'No volver a practicar', 'Solo ver más videos'],
+      correctIndex: 1,
+    },
+  ];
+  return questions;
+}
+
+export const generateTestQuestions = async (topic: string): Promise<TestQuestion[]> => {
+  try {
+    if (!XAI_API_KEY || XAI_API_KEY === 'undefined' || XAI_API_KEY === '') {
+      return generateTestMock(topic);
+    }
+    const response = await fetch(XAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${XAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'grok-beta',
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un evaluador de conocimientos. Genera 5 preguntas de opción múltiple sobre el tema solicitado. Responde SOLO con un array JSON donde cada elemento tiene: question (string), options (array de 4 strings), correctIndex (number 0-3).',
+          },
+          { role: 'user', content: topic },
+        ],
+      }),
+    });
+    if (!response.ok) return generateTestMock(topic);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return generateTestMock(topic);
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    return generateTestMock(topic);
+  } catch {
+    return generateTestMock(topic);
+  }
 };

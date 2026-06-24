@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,13 +20,19 @@ import type { RootStackParamList } from '../types/navigation';
 import { RoadmapNode, Resource } from '../types/roadmap';
 import { useRoadmapStore } from '../store/roadmapStore';
 import { EmptyState } from '../screens/SkeletonComponents';
+import TestModal from '../components/TestModal';
+import { generateTestQuestions } from '../services/aiService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
 export default function RoadmapScreen({ route }: Props) {
   const routeRoadmap = route.params.roadmap;
-  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory } = useRoadmapStore();
+  const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory, saveTestResult, testResults } = useRoadmapStore();
   const roadmap = currentRoadmap ?? routeRoadmap;
+
+  const [showPostTest, setShowPostTest] = useState(false);
+  const [postTestQuestions, setPostTestQuestions] = useState<any[]>([]);
+  const postTestTriggered = useRef(false);
 
   useEffect(() => {
     setCurrentRoadmap(routeRoadmap);
@@ -39,6 +45,19 @@ export default function RoadmapScreen({ route }: Props) {
   const completedCount = completedNodes.length;
   const progressPercent =
     totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
+  const allCompleted = completedCount > 0 && completedCount === totalNodes;
+
+  useEffect(() => {
+    if (allCompleted && !postTestTriggered.current) {
+      postTestTriggered.current = true;
+      const loadTest = async () => {
+        const questions = await generateTestQuestions(roadmap.title.replace('Ruta para aprender ', ''));
+        setPostTestQuestions(questions);
+        setShowPostTest(true);
+      };
+      loadTest();
+    }
+  }, [allCompleted, roadmap.title]);
 
   useEffect(() => {
     Animated.parallel([
@@ -78,6 +97,28 @@ export default function RoadmapScreen({ route }: Props) {
       case 'google': return '#4285F4';
       default: return '#6B7280';
     }
+  };
+
+  const handlePostTestSubmit = async (result: any) => {
+    const postResult = { ...result, type: 'post' as const };
+    await saveTestResult(postResult);
+    setShowPostTest(false);
+    const preTest = testResults.find((r: any) => r.topic === result.topic && r.type === 'pre');
+    if (preTest) {
+      const prePct = Math.round((preTest.score / preTest.total) * 100);
+      const postPct = Math.round((result.score / result.total) * 100);
+      const diff = postPct - prePct;
+      Alert.alert(
+        '¡Ruta completada!',
+        `Resultados:\nPre‑test: ${prePct}%\nPost‑test: ${postPct}%\nMejora: ${diff > 0 ? '+' : ''}${diff}%${diff > 0 ? ' 🎉' : ''}`
+      );
+    } else {
+      Alert.alert('Ruta completada', `Post‑test: ${result.score}/${result.total} (${Math.round((result.score / result.total) * 100)}%)`);
+    }
+  };
+
+  const handlePostTestSkip = () => {
+    setShowPostTest(false);
   };
 
   const handleSaveLocal = async () => {
@@ -306,6 +347,13 @@ export default function RoadmapScreen({ route }: Props) {
           </ScrollView>
         )}
       </Animated.View>
+      <TestModal
+        visible={showPostTest}
+        title={roadmap.title.replace('Ruta para aprender ', '')}
+        questions={postTestQuestions}
+        onSubmit={handlePostTestSubmit}
+        onSkip={handlePostTestSkip}
+      />
     </View>
   );
 }

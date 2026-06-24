@@ -20,6 +20,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const currentRoadmap = useRoadmapStore((state) => state.currentRoadmap);
   const surveyResponses = useRoadmapStore((state) => state.surveyResponses);
   const loadSurveyResponses = useRoadmapStore((state) => state.loadSurveyResponses);
+  const testResults = useRoadmapStore((state) => state.testResults);
+  const loadTestResults = useRoadmapStore((state) => state.loadTestResults);
   const [streak, setStreak] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -120,6 +122,13 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleViewSurveyData = () => {
     loadSurveyResponses();
     setSurveyModalVisible(true);
+  };
+
+  const [testModalVisible, setTestModalVisible] = useState(false);
+
+  const handleViewTestData = () => {
+    loadTestResults();
+    setTestModalVisible(true);
   };
 
   const handleLogout = async () => {
@@ -245,6 +254,17 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </TouchableOpacity>
         <TouchableOpacity
+          style={styles.menuItem}
+          onPress={handleViewTestData}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="checkbox-outline" size={20} color="#94a3b8" />
+          <Text style={styles.menuText}>Resultados de tests</Text>
+          <View style={styles.surveyBadge}>
+            <Text style={styles.surveyBadgeText}>{testResults.length}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.logout}
           onPress={handleLogout}
           activeOpacity={0.8}
@@ -317,6 +337,46 @@ export default function ProfileScreen({ navigation }: Props) {
               </View>
             )}
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setSurveyModalVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.modalCancelText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={testModalVisible} transparent animationType="fade" onRequestClose={() => setTestModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Resultados de tests</Text>
+            <Text style={styles.modalLabel}>{testResults.length} tests realizados</Text>
+            {testResults.length === 0 ? (
+              <Text style={{ color: '#64748b', fontSize: 13, textAlign: 'center', marginVertical: 20 }}>
+                Aún no hay tests. Aparecen al generar y completar rutas.
+              </Text>
+            ) : (
+              <View style={{ maxHeight: 300 }}>
+                {testResults.slice().reverse().map((r: any, i: number) => {
+                  const preTest = testResults.find((t: any) => t.topic === r.topic && t.type === 'pre');
+                  const postTest = testResults.find((t: any) => t.topic === r.topic && t.type === 'post');
+                  return (
+                    <View key={i} style={{ backgroundColor: '#0c1a2e', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#1e293b' }}>
+                      <Text style={{ color: '#e2e8f0', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>{r.topic}</Text>
+                      <Text style={{ color: '#94a3b8', fontSize: 11 }}>
+                        {r.type === 'pre' ? '📝 Pre‑test' : '✅ Post‑test'}: {r.score}/{r.total} ({Math.round((r.score / r.total) * 100)}%)
+                      </Text>
+                      {r.type === 'post' && preTest && (
+                        <Text style={{ color: '#22c55e', fontSize: 11, marginTop: 2 }}>
+                          Mejora: +{Math.round((r.score / r.total) * 100 - (preTest.score / preTest.total) * 100)}%
+                        </Text>
+                      )}
+                      <Text style={{ color: '#475569', fontSize: 10, marginTop: 4 }}>
+                        {new Date(r.timestamp).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setTestModalVisible(false)} activeOpacity={0.8}>
               <Text style={styles.modalCancelText}>Cerrar</Text>
             </TouchableOpacity>
           </View>

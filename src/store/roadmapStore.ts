@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Roadmap } from '../types/roadmap';
 import type { SurveyResponse } from '../types/survey';
+import type { TestResult } from '../types/test';
 
 type RoadmapState = {
   currentRoadmap: Roadmap | null;
@@ -9,6 +10,7 @@ type RoadmapState = {
   recentTopics: string[];
   completedNodes: string[];
   surveyResponses: SurveyResponse[];
+  testResults: TestResult[];
 
   setCurrentRoadmap: (roadmap: Roadmap) => void;
   loadRecentTopics: () => Promise<void>;
@@ -21,6 +23,8 @@ type RoadmapState = {
   loadLocalRoadmaps: () => void;
   saveSurveyResponse: (response: SurveyResponse) => Promise<void>;
   loadSurveyResponses: () => Promise<void>;
+  saveTestResult: (result: TestResult) => Promise<void>;
+  loadTestResults: () => Promise<void>;
 };
 
 const DEFAULT_TOPICS = ['React Native', 'Machine Learning', 'Diseño UX', 'Python Básico'];
@@ -31,6 +35,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   recentTopics: [],
   completedNodes: [],
   surveyResponses: [],
+  testResults: [],
 
   setCurrentRoadmap: (roadmap) =>
     set({
@@ -126,6 +131,27 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       set({ surveyResponses: stored ? JSON.parse(stored) : [] });
     } catch {
       set({ surveyResponses: [] });
+    }
+  },
+
+  saveTestResult: async (result) => {
+    try {
+      const stored = await AsyncStorage.getItem('@test_results');
+      const all = stored ? JSON.parse(stored) : [];
+      all.push(result);
+      await AsyncStorage.setItem('@test_results', JSON.stringify(all));
+      set({ testResults: all });
+    } catch {
+      // Silent fail
+    }
+  },
+
+  loadTestResults: async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@test_results');
+      set({ testResults: stored ? JSON.parse(stored) : [] });
+    } catch {
+      set({ testResults: [] });
     }
   },
 
