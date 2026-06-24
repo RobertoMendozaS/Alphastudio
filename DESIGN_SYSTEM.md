@@ -8,40 +8,40 @@
 
 | Token | Hex | Uso |
 |-------|-----|-----|
-| `bg-deep` | `#020617` | Inicio de gradiente fondo |
-| `bg-primary` | `#0f172a` | Fondo pantallas, cards, header, tab bar |
-| `bg-secondary` | `#0c1a2e` | Inputs, resource rows, iconos card |
-| `bg-tertiary` | `#1e293b` | Chips, progress track, skeleton, demo btn |
+| `bg-deep` | `#09090b` | Inicio de gradiente fondo |
+| `bg-primary` | `#0f0b1f` | Fondo pantallas, cards, header, tab bar |
+| `bg-secondary` | `#17122b` | Inputs, resource rows, iconos card |
+| `bg-tertiary` | `#3b2c6b` | Chips, progress track, skeleton, demo btn |
 | `bg-dark` | `#111827` | Check button sin completar |
 | `bg-completed` | `#0b1f18` | Card completada |
 | `bg-completed-dark` | `#052e16` | Check button completado |
-| `accent` | `#06b6d4` | Botones, badge dot, avatar, check circle |
+| `accent` | `#8b5cf6` | Botones, badge dot, avatar, check circle |
 | `accent-gradient` | `#6366f1` | Secundario gradiente |
-| `text-primary` | `#e2e8f0` | Texto principal |
-| `text-muted` | `#94a3b8` | Subtítulos, tab inactivo |
-| `text-subtle` | `#64748b` | Descripciones, fechas |
-| `text-dim` | `#475569` | Iconos, placeholder |
-| `text-dimmer` | `#334155` | Placeholder login, borde input |
+| `text-primary` | `#f8fafc` | Texto principal |
+| `text-muted` | `#a78bfa` | Subtítulos, tab inactivo |
+| `text-subtle` | `#94a3b8` | Descripciones, fechas |
+| `text-dim` | `#6b7280` | Iconos, placeholder |
+| `text-dimmer` | `#4c3a85` | Placeholder login, borde input |
 | `cyan-header` | `#38bdf8` | Tint header, tab activo, demo |
 | `green-success` | `#22c55e` | Progreso, completado |
 | `green-title` | `#bbf7d0` | Título card completada |
 | `green-desc` | `#86efac` | Descripción card completada |
 | `orange-streak` | `#f97316` | Racha |
 | `red-error` | `#ef4444` | Eliminar, logout |
-| `border-default` | `#1e293b` | Bordes cards, inputs, skeleton |
+| `border-default` | `#3b2c6b` | Bordes cards, inputs, skeleton |
 | `border-completed` | `#14532d` | Borde card completada |
 
 ## 2. Tipografía
 
 | Elemento | Size | Weight | Color |
 |----------|------|--------|-------|
-| Título pantalla (AlphaStudio AI) | 32 | 800 | `#f1f5f9` |
+| Título pantalla (AlphaStudio AI) | 32 | 800 | `#ffffff` |
 | Título login (ALPHA) | 22 | 800 | `#fff` |
-| Subtítulo | 16 | — | `#94a3b8` |
+| Subtítulo | 16 | — | `#a78bfa` |
 | Texto input / botón | 13 | 700 | `#fff` |
-| Título card | 14 | 700 | `#e2e8f0` |
-| Descripción card | 12 | — | `#64748b` |
-| Chip text | 13 | 500 | `#cbd5e1` |
+| Título card | 14 | 700 | `#f8fafc` |
+| Descripción card | 12 | — | `#94a3b8` |
+| Chip text | 13 | 500 | `#e2e8f0` |
 | Número progreso | 20 | 800 | `#22c55e` |
 | Score racha | 44 | 900 | `#f97316` |
 | Letra logo α | 34 | 900 | `#fff` |
@@ -77,8 +77,8 @@
 
 ## 5. Gradientes
 
-- **Fondo todas las pantallas**: `['#020617', '#0f172a', '#0c1a2e']` con `StyleSheet.absoluteFill`
-- **Botón primario Login / Avatar / Logo**: `['#06b6d4', '#6366f1']`
+- **Fondo todas las pantallas**: `['#09090b', '#0f0b1f', '#17122b']` con `StyleSheet.absoluteFill`
+- **Botón primario Login / Avatar / Logo**: `['#8b5cf6', '#0ea5e9']`
 
 ## 6. Animaciones
 
@@ -100,32 +100,32 @@
 ### Botón primario
 ```
 <TouchableOpacity activeOpacity={0.85}>
-  <LinearGradient colors={['#06b6d4','#6366f1']} borderRadius=12>
+  <LinearGradient colors={['#8b5cf6', '#0ea5e9']} borderRadius=12>
 ```
 
 ### Input
 ```
-flexDirection: row, alignItems: center, bg=#0c1a2e, border=#1e293b, borderRadius=12, padding=12
+flexDirection: row, alignItems: center, bg=#17122b, border=#3b2c6b, borderRadius=12, padding=12
 ```
 
 ### Card
 ```
-flexDirection: row, bg=#0f172a, border=#1e293b, borderRadius=14, padding=14, gap=12
+flexDirection: row, bg=#0f0b1f, border=#3b2c6b, borderRadius=14, padding=14, gap=12
 ```
 
 ### Timeline (RoadmapScreen)
 ```
 position: relative, paddingLeft: 6
-line: position absolute, left: 20, top/bottom 10, width 2, bg #1e293b
+line: position absolute, left: 20, top/bottom 10, width 2, bg #3b2c6b
 dot wrap: width 40, alignItems center
-check circle: 28x28, border 2 #06b6d4, bg #0f172a
+check circle: 28x28, border 2 #8b5cf6, bg #0f0b1f
 completed: bg #22c55e, border #22c55e
 ```
 
 ### Tab Bar / Header Nav
-- Tab bar bg: `#0f172a`, border top: `#334155`
-- Active tint: `#38bdf8`, inactive: `#94a3b8`
-- Header bg: `#0f172a`, tint: `#38bdf8`
+- Tab bar bg: `#0f0b1f`, border top: `#4c3a85`
+- Active tint: `#38bdf8`, inactive: `#a78bfa`
+- Header bg: `#0f0b1f`, tint: `#38bdf8`
 
 ## 8. Importaciones requeridas
 

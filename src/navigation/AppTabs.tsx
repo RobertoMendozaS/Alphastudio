@@ -1,5 +1,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { Platform, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 import HomeScreen from '../screens/HomeScreen';
 import HistoryScreen from '../screens/HistoryScreen';
@@ -16,18 +19,33 @@ const Tab = createBottomTabNavigator<AppTabParamList>();
 export default function AppTabs() {
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: (e) => {
+          if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        },
+      }}
       screenOptions={({ route }) => ({
-        headerStyle: {
-          backgroundColor: '#0f172a',
-        },
-        headerTintColor: '#38bdf8',
+        headerShown: false,
+        tabBarActiveTintColor: '#8b5cf6',
+        tabBarInactiveTintColor: '#a78bfa',
         tabBarStyle: {
-          backgroundColor: '#0f172a',
-          borderTopColor: '#334155',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 85 : 65,
         },
-        tabBarActiveTintColor: '#38bdf8',
-        tabBarInactiveTintColor: '#94a3b8',
-        tabBarIcon: ({ color, size }) => {
+        tabBarBackground: () => (
+          <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+        ),
+        tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
 
           if (route.name === 'Home') iconName = 'home-outline';

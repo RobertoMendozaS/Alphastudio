@@ -8,18 +8,29 @@ import {
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../store/authStore';
 import { useRoadmapStore } from '../store/roadmapStore';
 import { supabase } from '../services/supabaseClient';
 import { performCheckIn, getStreak, updateProfile } from '../services/authService';
 import { getTestStats, syncTestResult } from '../services/testService';
+import { useToast } from '../components/ToastProvider';
+
+const BADGES = [
+  { id: 'first_step', name: 'Primer Paso', icon: 'footsteps', color: '#10b981', desc: 'Completa tu primer tema' },
+  { id: 'streak_3', name: 'Constancia', icon: 'flame', color: '#f97316', desc: 'Racha de 3 días' },
+  { id: 'scholar', name: 'Erudito', icon: 'school', color: '#8b5cf6', desc: 'Completa una ruta al 100%' },
+  { id: 'explorer', name: 'Explorador', icon: 'compass', color: '#0ea5e9', desc: 'Genera tu primera ruta' },
+];
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
 export default function ProfileScreen({ navigation }: Props) {
   const { user, isDemo, logout } = useAuthStore();
+  const toast = useToast();
   const currentRoadmap = useRoadmapStore((state) => state.currentRoadmap);
+  const completedNodesArray = useRoadmapStore((state) => state.completedNodes);
+  const localRoadmaps = useRoadmapStore((state) => state.localRoadmaps);
   const surveyResponses = useRoadmapStore((state) => state.surveyResponses);
   const loadSurveyResponses = useRoadmapStore((state) => state.loadSurveyResponses);
   const testResults = useRoadmapStore((state) => state.testResults);
@@ -36,10 +47,17 @@ export default function ProfileScreen({ navigation }: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  const completedNodes = currentRoadmap?.nodes.filter((node) => node.data.isCompleted).length ?? 0;
+  const completedNodes = completedNodesArray.length;
   const totalNodes = currentRoadmap?.nodes.length ?? 0;
   const progressPercent = totalNodes > 0 ? Math.round((completedNodes / totalNodes) * 100) : 0;
   const userEmail = user?.email ?? 'Usuario sin correo';
+
+  const unlockedBadges = {
+    first_step: completedNodes > 0,
+    streak_3: streak >= 3,
+    scholar: progressPercent === 100 && totalNodes > 0,
+    explorer: currentRoadmap !== null || localRoadmaps.length > 0,
+  };
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -87,11 +105,11 @@ export default function ProfileScreen({ navigation }: Props) {
         display_name: editDisplayName,
         avatar_url: editAvatarUrl || undefined,
       });
-      Alert.alert('Perfil actualizado', 'Los cambios se guardaron correctamente.');
+      toast.show('Los cambios se guardaron correctamente.', 'success');
       setEditModalVisible(false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error al actualizar perfil';
-      Alert.alert('Error', message);
+      toast.show(message, 'error');
     } finally {
       setEditSaving(false);
     }
@@ -99,23 +117,37 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const handleCheckIn = async () => {
     if (!user) return;
+    
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
     setCheckingIn(true);
     try {
       const success = await performCheckIn(user.id);
       if (success) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
         const { streak: newStreak } = await getStreak(user.id);
         setStreak(newStreak);
         setCheckedInToday(true);
-        Alert.alert(
-          '🔥 Check-in completado',
-          `Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`
+        toast.show(
+          `¡Check-in completado! Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`,
+          'success'
         );
       } else {
-        Alert.alert('Ya hiciste check-in hoy', 'Vuelve mañana.');
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+        toast.show('Ya hiciste check-in hoy. Vuelve mañana.', 'info');
       }
     } catch (error: unknown) {
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
       const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado';
-      Alert.alert('Error', message);
+      toast.show(message, 'error');
     } finally {
       setCheckingIn(false);
     }
@@ -193,182 +225,163 @@ export default function ProfileScreen({ navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#06b6d4" />
+        <ActivityIndicator size="large" color="#0ea5e9" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} style={StyleSheet.absoluteFill} />
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="dark-content" />
+
       <View style={styles.header}>
-        <Ionicons
-          name="arrow-back"
-          size={24}
-          color="#475569"
-          onPress={() => navigation.goBack()}
-        />
-        <View style={styles.badge}>
-          <View style={styles.badgeDot} />
-          <Text style={styles.badgeTxt}>Perfil</Text>
-        </View>
-        <View style={styles.avatarSmall}>
-          <Ionicons name="person" size={16} color="#fff" />
-        </View>
+        <Ionicons name="arrow-back" size={24} color="#0f0b1f" onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Perfil</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+        </TouchableOpacity>
       </View>
-      <Animated.View
-        style={[
-          styles.content,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
-        <View style={styles.userCard}>
-          <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.avatar}>
-            <Ionicons name="person" size={28} color="#fff" />
-          </LinearGradient>
-          <View style={styles.emailRow}>
-            <Text style={styles.email}>{userEmail}</Text>
-            <TouchableOpacity onPress={handleOpenEdit} activeOpacity={0.7}>
-              <Ionicons name="pencil" size={16} color="#94a3b8" />
-            </TouchableOpacity>
+
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrap}>
+            <Ionicons name="person" size={32} color="#0ea5e9" />
           </View>
-          <Text style={styles.sub}>Usuario Alpha AI</Text>
-          {isDemo ? <Text style={styles.demoBadge}>Modo demo sin Supabase</Text> : null}
+          <Text style={styles.userName}>{userEmail.split('@')[0]}</Text>
+          <Text style={styles.userEmail}>{userEmail}</Text>
+          <View style={styles.badge}>
+            <Ionicons name="sparkles" size={12} color="#0ea5e9" />
+            <Text style={styles.badgeText}>Usuario Alpha AI</Text>
+          </View>
         </View>
-        {currentRoadmap ? (
-          <View style={styles.progressCard}>
-            <Ionicons name="analytics-outline" size={32} color="#38bdf8" />
-            <Text style={styles.progressCount}>{progressPercent}%</Text>
-            <Text style={styles.progressLabel}>progreso de la ruta actual</Text>
-            <Text style={styles.progressDetail}>
-              {completedNodes} de {totalNodes} módulos completados
-            </Text>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconWrap}><Ionicons name="analytics" size={18} color="#0ea5e9" /></View>
+            <Text style={styles.statValue}>{progressPercent}%</Text>
+            <Text style={styles.statLabel}>Progreso</Text>
           </View>
-        ) : null}
-        <View style={styles.streakCard}>
-          <Ionicons name="flame" size={28} color="#f97316" />
-          <Text style={styles.streakCount}>{streak}</Text>
-          <Text style={styles.streakLabel}>
-            día{streak !== 1 ? 's' : ''} consecutivo{streak !== 1 ? 's' : ''}
-          </Text>
-          <TouchableOpacity
+          <View style={styles.statCard}>
+            <View style={styles.statIconWrap}><Ionicons name="flame" size={18} color="#f97316" /></View>
+            <Text style={styles.statValue}>{streak}</Text>
+            <Text style={styles.statLabel}>Racha</Text>
+          </View>
+        </View>
+
+        <View style={[styles.streakCard, { marginHorizontal: 20, marginBottom: 32 }]}>
+          <Ionicons name="flame" size={48} color={checkedInToday ? "#f97316" : "#475569"} />
+          <Text style={[styles.streakCount, !checkedInToday && { color: '#475569' }]}>{streak}</Text>
+          <Text style={styles.streakLabel}>Días consecutivos de aprendizaje</Text>
+          
+          <TouchableOpacity 
             style={[styles.checkBtn, checkedInToday && styles.checkBtnDone]}
             onPress={handleCheckIn}
             disabled={checkingIn || checkedInToday}
-            activeOpacity={0.85}
           >
             {checkingIn ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.checkBtnText}>
-                {checkedInToday ? 'Check-in realizado' : 'Hacer check-in'}
+              <Text style={[styles.checkBtnText, checkedInToday && { color: '#a78bfa' }]}>
+                {checkedInToday ? '✓ Check-in de hoy completado' : '🔥 Hacer Check-in Diario'}
               </Text>
             )}
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('History')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="time-outline" size={20} color="#94a3b8" />
-          <Text style={styles.menuText}>Historial de rutas</Text>
-          <Ionicons name="chevron-forward" size={18} color="#475569" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={handleViewSurveyData}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="clipboard-outline" size={20} color="#94a3b8" />
-          <Text style={styles.menuText}>Datos de encuestas</Text>
-          <View style={styles.surveyBadge}>
-            <Text style={styles.surveyBadgeText}>{surveyResponses.length}</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={handleViewStats}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="bar-chart-outline" size={20} color="#94a3b8" />
-          <Text style={styles.menuText}>Estadísticas de tests</Text>
-          <Ionicons name="chevron-forward" size={18} color="#475569" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={handleSyncNow}
-          activeOpacity={0.8}
-          disabled={syncing}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color="#94a3b8" />
-          <Text style={styles.menuText}>{syncing ? 'Sincronizando...' : 'Sincronizar datos'}</Text>
-          {syncing && <ActivityIndicator size="small" color="#06b6d4" />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={handleViewTestData}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="checkbox-outline" size={20} color="#94a3b8" />
-          <Text style={styles.menuText}>Resultados de tests</Text>
-          <View style={styles.surveyBadge}>
-            <Text style={styles.surveyBadgeText}>{testResults.length}</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.logout}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
-        </TouchableOpacity>
-        </ScrollView>
+        <View style={styles.badgesSection}>
+          <Text style={styles.badgesSectionTitle}>Tus Insignias</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.badgesScroll}>
+            {BADGES.map((b) => {
+              const isUnlocked = unlockedBadges[b.id as keyof typeof unlockedBadges];
+              return (
+                <View key={b.id} style={[styles.badgeCard, !isUnlocked && styles.badgeCardLocked]}>
+                  <View style={[styles.badgeIconWrap, isUnlocked ? { backgroundColor: b.color + '20' } : {}]}>
+                    <Ionicons name={b.icon as any} size={28} color={isUnlocked ? b.color : '#e2e8f0'} />
+                  </View>
+                  <Text style={[styles.badgeName, !isUnlocked && { color: '#a78bfa' }]}>{b.name}</Text>
+                  <Text style={styles.badgeDesc} numberOfLines={2}>{b.desc}</Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('History')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="time-outline" size={20} color="#94a3b8" />
+            <Text style={styles.menuText}>Historial de rutas</Text>
+            <Ionicons name="chevron-forward" size={18} color="#475569" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleViewSurveyData}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="clipboard-outline" size={20} color="#94a3b8" />
+            <Text style={styles.menuText}>Datos de encuestas</Text>
+            <View style={styles.surveyBadge}>
+              <Text style={styles.surveyBadgeText}>{surveyResponses.length}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleViewStats}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bar-chart-outline" size={20} color="#94a3b8" />
+            <Text style={styles.menuText}>Estadísticas de tests</Text>
+            <Ionicons name="chevron-forward" size={18} color="#475569" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleSyncNow}
+            activeOpacity={0.8}
+            disabled={syncing}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color="#94a3b8" />
+            <Text style={styles.menuText}>{syncing ? 'Sincronizando...' : 'Sincronizar datos'}</Text>
+            {syncing && <ActivityIndicator size="small" color="#06b6d4" />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleViewTestData}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="checkbox-outline" size={20} color="#94a3b8" />
+            <Text style={styles.menuText}>Resultados de tests</Text>
+            <View style={styles.surveyBadge}>
+              <Text style={styles.surveyBadgeText}>{testResults.length}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.logout}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+            <Text style={styles.logoutText}>Cerrar sesión</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
+
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Editar perfil</Text>
             <Text style={styles.modalLabel}>Nombre</Text>
             <View style={styles.modalInputBox}>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Tu nombre"
-                placeholderTextColor="#334155"
-                value={editDisplayName}
-                onChangeText={setEditDisplayName}
-              />
+              <TextInput style={styles.modalInput} placeholder="Tu nombre" value={editDisplayName} onChangeText={setEditDisplayName} />
             </View>
-            <Text style={styles.modalLabel}>Avatar URL (opcional)</Text>
-            <View style={styles.modalInputBox}>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="https://ejemplo.com/avatar.jpg"
-                placeholderTextColor="#334155"
-                value={editAvatarUrl}
-                onChangeText={setEditAvatarUrl}
-                autoCapitalize="none"
-              />
-            </View>
-            <TouchableOpacity style={styles.modalBtnWrap} onPress={handleSaveProfile} activeOpacity={0.85} disabled={editSaving}>
-              <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.modalBtn}>
-                {editSaving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalBtnText}>Guardar</Text>
-                )}
-              </LinearGradient>
+            <TouchableOpacity style={styles.modalBtnWrap} onPress={handleSaveProfile} disabled={editSaving}>
+              <Text style={styles.modalBtnText}>{editSaving ? 'Guardando...' : 'Guardar'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModalVisible(false)} activeOpacity={0.8} disabled={editSaving}>
-              <Text style={styles.modalCancelText}>Cancelar</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModalVisible(false)}><Text style={styles.modalCancelText}>Cancelar</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
-
       <Modal visible={surveyModalVisible} transparent animationType="fade" onRequestClose={() => setSurveyModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -490,216 +503,264 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
-const styles = {
-  container: { flex: 1 },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 32,
-    paddingBottom: 10,
-  },
-
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    gap: 6,
-  },
-
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#06b6d4',
-  },
-
-  badgeTxt: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  avatarSmall: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#06b6d4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#09090b' },
+  scrollContent: { paddingBottom: 40 },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-
-  userCard: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 16,
-    padding: 20,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerTitle: {
+    fontFamily: 'Outfit_400Regular', fontSize: 24,
+    fontFamily: 'Outfit_800ExtraBold',
+    color: '#f8fafc',
+    letterSpacing: -0.5,
+  },
+  logoutBtn: {
+    padding: 8,
+    backgroundColor: '#0f0b1f',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+  },
+  profileCard: {
+    alignItems: 'center',
+    marginHorizontal: 20,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#0f0b1f',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  avatarWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#17122b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#0f0b1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  userName: {
+    fontFamily: 'Outfit_400Regular', fontSize: 20,
+    fontFamily: 'Outfit_700Bold',
+    color: '#f8fafc',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontFamily: 'Outfit_400Regular', fontSize: 14,
+    color: '#a78bfa',
     marginBottom: 16,
   },
-
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#17122b',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+  },
+  badgeText: {
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    fontFamily: 'Outfit_700Bold',
+    color: '#0ea5e9',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    gap: 12,
+    marginBottom: 32,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#0f0b1f',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#17122b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+  },
+  statValue: {
+    fontFamily: 'Outfit_400Regular', fontSize: 22,
+    fontFamily: 'Outfit_800ExtraBold',
+    color: '#f8fafc',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    color: '#a78bfa',
+    fontFamily: 'Outfit_500Medium',
+  },
+  badgesSection: {
+    marginBottom: 32,
+  },
+  badgesSectionTitle: {
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontFamily: 'Outfit_700Bold',
+    color: '#f8fafc',
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  badgesScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  badgeCard: {
+    width: 110,
+    backgroundColor: '#0f0b1f',
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  badgeCardLocked: {
+    backgroundColor: '#09090b',
+    borderColor: '#0f0b1f',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  badgeIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3b2c6b',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
   },
-
-  emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  badgeName: {
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontFamily: 'Outfit_700Bold',
+    color: '#f8fafc',
+    textAlign: 'center',
+    marginBottom: 4,
   },
-
-  email: {
-    color: '#e2e8f0',
-    fontSize: 15,
-    fontWeight: '600',
+  badgeDesc: {
+    fontFamily: 'Outfit_400Regular', fontSize: 10,
+    color: '#a78bfa',
+    textAlign: 'center',
+    lineHeight: 14,
   },
-
-  sub: {
-    color: '#64748b',
-    fontSize: 11,
-    marginTop: 4,
-  },
-
-  demoBadge: {
-    marginTop: 8,
-    color: '#38bdf8',
-    fontSize: 13,
-  },
-
-  progressCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-
-  progressCount: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#38bdf8',
-    marginTop: 4,
-  },
-
-  progressLabel: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginBottom: 8,
-  },
-
-  progressDetail: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-
   streakCard: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     marginBottom: 14,
   },
-
   streakCount: {
-    fontSize: 44,
-    fontWeight: '900',
+    fontFamily: 'Outfit_400Regular', fontSize: 44,
+    fontFamily: 'Outfit_900Black',
     color: '#f97316',
     marginTop: 6,
   },
-
   streakLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
+    color: '#a78bfa',
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
     marginBottom: 12,
   },
-
   checkBtn: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#0ea5e9',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
     width: '100%',
     alignItems: 'center',
   },
-
   checkBtnDone: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#3b2c6b',
   },
-
   checkBtnText: {
     color: '#fff',
-    fontWeight: '700',
+    fontFamily: 'Outfit_700Bold',
   },
-
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
   },
-
   menuText: {
     flex: 1,
-    color: '#e2e8f0',
+    color: '#f8fafc',
     marginLeft: 12,
-    fontSize: 14,
+    fontFamily: 'Outfit_400Regular', fontSize: 14,
   },
-
   logout: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
     borderColor: '#7f1d1d',
     borderRadius: 14,
     padding: 16,
     marginTop: 10,
   },
-
   logoutText: {
     color: '#ef4444',
-    fontWeight: '600',
+    fontFamily: 'Outfit_600SemiBold',
     marginLeft: 8,
   },
-
   surveyBadge: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#0ea5e9',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -707,91 +768,81 @@ const styles = {
   },
   surveyBadgeText: {
     color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
+    fontFamily: 'Outfit_400Regular', fontSize: 11,
+    fontFamily: 'Outfit_700Bold',
   },
-
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(15,23,42,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 22,
   },
-
   modalCard: {
     width: '100%',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 18,
     padding: 22,
   },
-
   modalTitle: {
-    color: '#e2e8f0',
-    fontSize: 17,
-    fontWeight: '700',
+    color: '#f8fafc',
+    fontFamily: 'Outfit_400Regular', fontSize: 17,
+    fontFamily: 'Outfit_700Bold',
     marginBottom: 16,
     textAlign: 'center',
   },
-
   modalLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
+    color: '#a78bfa',
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
     marginBottom: 6,
   },
-
   modalInputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0c1a2e',
+    backgroundColor: '#17122b',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 12,
   },
-
   modalInput: {
     flex: 1,
-    color: '#e2e8f0',
-    fontSize: 13,
+    color: '#f8fafc',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
   },
-
   modalBtnWrap: {
     marginTop: 6,
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: '#0ea5e9',
   },
-
   modalBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
   },
-
   modalBtnText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 13.5,
+    fontFamily: 'Outfit_700Bold', fontSize: 13.5,
+    textAlign: 'center',
+    paddingVertical: 14,
   },
-
   modalCancelBtn: {
     marginTop: 10,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#17122b',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
-
   modalCancelText: {
-    color: '#e2e8f0',
-    fontWeight: '600',
-    fontSize: 13.5,
+    color: '#a78bfa',
+    fontFamily: 'Outfit_600SemiBold', fontSize: 13.5,
   },
-} as const;
+});

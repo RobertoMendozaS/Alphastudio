@@ -15,13 +15,11 @@ export function SkeletonHistoryCard() {
   }, []);
 
   return (
-    <Animated.View style={[styles.card, { opacity: pulse }]}>
-      <View style={styles.row}>
-        <View style={styles.dot} />
-        <View style={styles.body}>
-          <View style={styles.line} />
-          <View style={[styles.line, { width: '60%' }]} />
-        </View>
+    <Animated.View style={[styles.skeletonCard, { opacity: pulse }]}>
+      <View style={styles.skeletonIcon} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={styles.skeletonLineShort} />
+        <View style={styles.skeletonLineLong} />
       </View>
     </Animated.View>
   );
@@ -29,36 +27,95 @@ export function SkeletonHistoryCard() {
 
 export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: any) {
   return (
-    <View style={styles.empty}>
-      <View style={styles.emptyBody}>
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIconWrap}>
         {icon ? (
-          <Ionicons name={icon} size={48} color="#334155" />
+          <Ionicons name={icon} size={32} color="#a78bfa" />
         ) : (
-          <View style={styles.emptyIcon} />
-        )}
-        {title && <Text style={styles.emptyTitle}>{title}</Text>}
-        {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
-        {actionLabel && onAction && (
-          <TouchableOpacity style={styles.emptyAction} onPress={onAction} activeOpacity={0.8}>
-            <Text style={styles.emptyActionText}>{actionLabel}</Text>
-          </TouchableOpacity>
+          <Ionicons name="folder-open-outline" size={32} color="#a78bfa" />
         )}
       </View>
+      {title && <Text style={styles.emptyTitle}>{title}</Text>}
+      {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
+      {actionLabel && onAction && (
+        <TouchableOpacity style={styles.emptyBtn} onPress={onAction} activeOpacity={0.8}>
+          <Text style={styles.emptyBtnText}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#0f172a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1e293b' },
-  row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  dot: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#1e293b' },
-  body: { flex: 1, gap: 8 },
-  line: { height: 12, borderRadius: 6, backgroundColor: '#1e293b', width: '80%' },
-  empty: { flex: 1 },
-  emptyBody: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#1e293b' },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#e2e8f0', textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 20, paddingHorizontal: 40 },
-  emptyAction: { marginTop: 8, backgroundColor: '#06b6d4', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  emptyActionText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  skeletonCard: {
+    flexDirection: 'row',
+    backgroundColor: '#0f0b1f',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+    alignItems: 'center',
+    gap: 12,
+  },
+  skeletonIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#3b2c6b',
+  },
+  skeletonLineShort: {
+    height: 12,
+    width: '60%',
+    backgroundColor: '#3b2c6b',
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  skeletonLineLong: {
+    height: 10,
+    width: '90%',
+    backgroundColor: '#3b2c6b',
+    borderRadius: 5,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#17122b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3b2c6b',
+  },
+  emptyTitle: {
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontFamily: 'Outfit_700Bold',
+    color: '#f8fafc',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    color: '#a78bfa',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyBtn: {
+    backgroundColor: '#0ea5e9',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyBtnText: {
+    color: '#fff',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+  },
 });

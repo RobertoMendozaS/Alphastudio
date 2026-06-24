@@ -13,7 +13,6 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -26,7 +25,7 @@ import { supabase } from '../services/supabaseClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
 
-export default function RoadmapScreen({ route }: Props) {
+export default function RoadmapScreen({ route, navigation }: Props) {
   const routeRoadmap = route.params.roadmap;
   const { currentRoadmap, setCurrentRoadmap, completedNodes, toggleNodeCompleted, saveCurrentRoadmapLocal, saveRoadmapToHistory, saveAndSyncTestResult, testResults } = useRoadmapStore();
   const roadmap = currentRoadmap ?? routeRoadmap;
@@ -92,11 +91,11 @@ export default function RoadmapScreen({ route }: Props) {
 
   const getColorType = (type: string) => {
     switch (type) {
-      case 'youtube': return '#FF0000';
-      case 'course': return '#A855F7';
-      case 'documentation': return '#3B82F6';
-      case 'google': return '#4285F4';
-      default: return '#6B7280';
+      case 'youtube': return '#ef4444';
+      case 'course': return '#8b5cf6';
+      case 'documentation': return '#3b82f6';
+      case 'google': return '#3b82f6';
+      default: return '#94a3b8';
     }
   };
 
@@ -152,27 +151,23 @@ export default function RoadmapScreen({ route }: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
-      <LinearGradient
-        colors={['#020617', '#0f172a', '#0c1a2e']}
-        style={StyleSheet.absoluteFill}
-      />
-
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <Ionicons name="arrow-back" size={24} color="#475569" />
-
-        <View style={styles.badge}>
-          <View style={styles.badgeDot} />
-          <Text style={styles.badgeTxt}>Roadmap</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#0f0b1f"
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={styles.headerTitle}>Mi Ruta</Text>
         </View>
-
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleSaveLocal} style={styles.shareBtn}>
-            <Ionicons name="save-outline" size={18} color="#06b6d4" />
+            <Ionicons name="save-outline" size={20} color="#0ea5e9" />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-            <Ionicons name="share-social-outline" size={18} color="#06b6d4" />
+            <Ionicons name="share-social-outline" size={20} color="#0ea5e9" />
           </TouchableOpacity>
         </View>
       </View>
@@ -180,29 +175,29 @@ export default function RoadmapScreen({ route }: Props) {
       <Animated.View
         style={[
           styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
+        <View style={styles.badge}>
+          <View style={styles.badgeDot} />
+          <Text style={styles.badgeTxt}>Roadmap</Text>
+        </View>
+
         <Text style={styles.title}>{roadmap.title}</Text>
         <Text style={styles.desc}>{roadmap.description}</Text>
 
         <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
             <View>
-              <Text style={styles.progressLabel}>Progreso de la ruta</Text>
-              <Text style={styles.progressSubLabel}>
+              <Text style={styles.progressTitle}>Progreso de la ruta</Text>
+              <Text style={styles.progressSub}>
                 {completedCount} de {totalNodes} nodos completados
               </Text>
             </View>
-
             <Text style={styles.progressPercent}>{progressPercent}%</Text>
           </View>
-
-          <View style={styles.progressTrack}>
-            <View
+          <View style={styles.progressBar}>
+            <Animated.View
               style={[
                 styles.progressFill,
                 {
@@ -241,56 +236,36 @@ export default function RoadmapScreen({ route }: Props) {
                           ]}
                         >
                           {isCompleted ? (
-                            <Ionicons name="checkmark" size={15} color="#020617" />
+                            <Ionicons name="checkmark" size={15} color="#fff" />
                           ) : (
-                            <Text style={styles.step}>{index + 1}</Text>
+                            <View style={styles.dotInner} />
                           )}
                         </TouchableOpacity>
                       </View>
 
-                      <View
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => toggleNodeCompleted(node.id)}
                         style={[
                           styles.card,
                           isCompleted && styles.cardCompleted,
                         ]}
                       >
                         <View style={styles.cardHeader}>
-                          <View style={styles.cardTitleWrap}>
-                            <Text
-                              style={[
-                                styles.cardTitle,
-                                isCompleted && styles.cardTitleCompleted,
-                              ]}
-                            >
-                              {node.data.label}
-                            </Text>
-
-                            <Text style={styles.cardStatus}>
-                              {isCompleted ? 'Completado' : 'Pendiente'}
-                            </Text>
-                          </View>
-
-                          <TouchableOpacity
-                            onPress={() => toggleNodeCompleted(node.id)}
+                          <Text
                             style={[
-                              styles.checkButton,
-                              isCompleted && styles.checkButtonCompleted,
+                              styles.cardTitle,
+                              isCompleted && styles.cardTitleCompleted,
                             ]}
                           >
-                            <Ionicons
-                              name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                              size={18}
-                              color={isCompleted ? '#22c55e' : '#64748b'}
-                            />
-                            <Text
-                              style={[
-                                styles.checkButtonText,
-                                isCompleted && styles.checkButtonTextCompleted,
-                              ]}
-                            >
-                              {isCompleted ? 'Listo' : 'Marcar'}
-                            </Text>
-                          </TouchableOpacity>
+                            {node.data.label}
+                          </Text>
+                          {isCompleted && (
+                            <View style={styles.completedBadge}>
+                              <Ionicons name="checkmark-circle" size={12} color="#10b981" />
+                              <Text style={styles.completedBadgeText}>Listo</Text>
+                            </View>
+                          )}
                         </View>
 
                         <Text
@@ -302,7 +277,8 @@ export default function RoadmapScreen({ route }: Props) {
                           {node.data.description}
                         </Text>
 
-                        <View style={styles.resources}>
+                        <View style={styles.resourcesSection}>
+                          <Text style={styles.resourcesTitle}>Recursos</Text>
                           {node.data.resources.map((res: Resource, i: number) => (
                             <TouchableOpacity
                               key={res.id ?? `r-${i}`}
@@ -321,12 +297,12 @@ export default function RoadmapScreen({ route }: Props) {
                               <Ionicons
                                 name="open-outline"
                                 size={14}
-                                color="#475569"
+                                color="#a78bfa"
                               />
                             </TouchableOpacity>
                           ))}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     </View>
 
                     {!isLastNode && (
@@ -339,17 +315,45 @@ export default function RoadmapScreen({ route }: Props) {
                               isCompleted && styles.edgeLineCompleted,
                             ]}
                           />
-                          <Ionicons
-                            name="arrow-down"
-                            size={16}
-                            color={isCompleted ? '#22c55e' : '#334155'}
-                          />
                         </View>
                       </View>
                     )}
                   </View>
                 );
               })}
+
+              <View style={styles.badgeClaimSection}>
+                <TouchableOpacity
+                  style={[
+                    styles.badgeClaimBtn,
+                    progressPercent === 100 ? styles.badgeClaimBtnActive : styles.badgeClaimBtnDisabled,
+                  ]}
+                  disabled={progressPercent !== 100}
+                  onPress={async () => {
+                    await saveRoadmapToHistory(roadmap);
+                    await saveCurrentRoadmapLocal();
+                    Alert.alert(
+                      '¡Insignia Desbloqueada! 🎓',
+                      'Tu progreso ha sido guardado automáticamente en el Historial. La insignia de Erudito te espera en tu perfil.',
+                      [{ text: '¡Genial!', onPress: () => navigation.goBack() }]
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons 
+                    name={progressPercent === 100 ? "trophy" : "lock-closed"} 
+                    size={20} 
+                    color={progressPercent === 100 ? "#ffffff" : "#a78bfa"} 
+                  />
+                  <Text style={[
+                    styles.badgeClaimText,
+                    progressPercent === 100 ? styles.badgeClaimTextActive : styles.badgeClaimTextDisabled,
+                  ]}>
+                    {progressPercent === 100 ? '¡Reclamar Insignia!' : 'Completa la ruta para tu insignia'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
             </View>
           </ScrollView>
         )}
@@ -366,299 +370,94 @@ export default function RoadmapScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
+  container: { flex: 1, backgroundColor: '#09090b' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 32,
-    paddingBottom: 10,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 32, paddingBottom: 10,
   },
-
+  headerTitle: { fontFamily: 'Outfit_400Regular', fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#f8fafc' },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    gap: 6,
+    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f0b1f',
+    borderWidth: 1, borderColor: '#3b2c6b', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16,
   },
-
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#06b6d4',
-  },
-
-  badgeTxt: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  shareBtn: {
-    padding: 8,
-    backgroundColor: '#0f172a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-
-  title: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-
-  desc: {
-    color: '#64748b',
-    fontSize: 12.5,
-    marginBottom: 18,
-  },
-
+  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8b5cf6', marginRight: 6 },
+  badgeTxt: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  shareBtn: { padding: 8, backgroundColor: '#0f0b1f', borderRadius: 10, borderWidth: 1, borderColor: '#3b2c6b' },
+  content: { flex: 1, paddingHorizontal: 20 },
+  title: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 26, fontFamily: 'Outfit_800ExtraBold', marginBottom: 6, letterSpacing: -0.5 },
+  desc: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 13, marginBottom: 16, lineHeight: 20 },
   progressCard: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 18,
+    backgroundColor: '#0f0b1f', borderWidth: 1, borderColor: '#3b2c6b',
+    borderRadius: 16, padding: 16, marginBottom: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 2,
   },
-
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  progressLabel: {
-    color: '#e2e8f0',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  progressSubLabel: {
-    color: '#64748b',
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  progressPercent: {
-    color: '#22c55e',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-
-  progressTrack: {
-    height: 9,
-    backgroundColor: '#1e293b',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#22c55e',
-    borderRadius: 999,
-  },
-
-  timeline: {
-    position: 'relative',
-    paddingLeft: 6,
-    paddingBottom: 40,
-  },
-
-  line: {
-    position: 'absolute',
-    left: 20,
-    top: 10,
-    bottom: 10,
-    width: 2,
-    backgroundColor: '#1e293b',
-  },
-
-  nodeBlock: {
-    marginBottom: 4,
-  },
-
-  nodeRow: {
-    flexDirection: 'row',
-  },
-
-  dotWrap: {
-    width: 40,
-    alignItems: 'center',
-    marginRight: 10,
-  },
-
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  progressTitle: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 14, fontFamily: 'Outfit_700Bold' },
+  progressSub: { color: '#94a3b8', fontFamily: 'Outfit_400Regular', fontSize: 12, marginTop: 2 },
+  progressPercent: { color: '#22c55e', fontFamily: 'Outfit_400Regular', fontSize: 20, fontFamily: 'Outfit_900Black' },
+  progressBar: { height: 8, backgroundColor: '#3b2c6b', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 4 },
+  timeline: { paddingBottom: 40, paddingLeft: 16 },
+  line: { position: 'absolute', left: 16, top: 0, bottom: 0, width: 2, backgroundColor: '#3b2c6b' },
+  nodeBlock: { marginBottom: 0 },
+  nodeRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  dotWrap: { width: 40, alignItems: 'center', marginRight: 10 },
   checkCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0f172a',
-    borderWidth: 2,
-    borderColor: '#06b6d4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
+    width: 24, height: 24, borderRadius: 12, backgroundColor: '#0f0b1f',
+    borderWidth: 2, borderColor: '#3b2c6b',
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
   },
-
-  checkCircleCompleted: {
-    backgroundColor: '#22c55e',
-    borderColor: '#22c55e',
-  },
-
-  step: {
-    fontSize: 10,
-    color: '#06b6d4',
-    fontWeight: '800',
-  },
-
+  checkCircleCompleted: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
+  dotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4c3a85' },
   card: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 14,
-    padding: 14,
+    flex: 1, backgroundColor: '#0f0b1f', borderWidth: 1, borderColor: '#3b2c6b',
+    borderRadius: 14, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 1,
   },
-
-  cardCompleted: {
-    borderColor: '#14532d',
-    backgroundColor: '#0b1f18',
-  },
-
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 6,
-  },
-
-  cardTitleWrap: {
-    flex: 1,
-  },
-
-  cardTitle: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cardTitleCompleted: {
-    color: '#bbf7d0',
-  },
-
-  cardStatus: {
-    color: '#64748b',
-    fontSize: 10,
-    marginTop: 2,
-  },
-
-  cardDesc: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginBottom: 10,
-    lineHeight: 17,
-  },
-
-  cardDescCompleted: {
-    color: '#86efac',
-  },
-
-  checkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-
-  checkButtonCompleted: {
-    backgroundColor: '#052e16',
-    borderColor: '#14532d',
-  },
-
-  checkButtonText: {
-    color: '#94a3b8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-
-  checkButtonTextCompleted: {
-    color: '#22c55e',
-  },
-
-  resources: {
-    gap: 6,
-  },
-
+  cardCompleted: { borderColor: '#14532d', backgroundColor: '#0b1f18' },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 },
+  cardTitle: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 15, fontFamily: 'Outfit_700Bold', flex: 1 },
+  cardTitleCompleted: { color: '#bbf7d0' },
+  completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 6 },
+  completedBadgeText: { color: '#22c55e', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_700Bold' },
+  cardDesc: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 13, marginBottom: 12, lineHeight: 20 },
+  cardDescCompleted: { color: '#86efac' },
+  resourcesSection: { borderTopWidth: 1, borderTopColor: '#3b2c6b', paddingTop: 10 },
+  resourcesTitle: { color: '#94a3b8', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_700Bold', marginBottom: 8, textTransform: 'uppercase' },
   resource: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0c1a2e',
+    backgroundColor: '#17122b',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    gap: 8,
+    borderColor: '#3b2c6b',
   },
-
   resourceText: {
-    flex: 1,
-    color: '#e2e8f0',
-    fontSize: 12,
+    color: '#0ea5e9',
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    fontFamily: 'Outfit_500Medium',
+    marginLeft: 6,
   },
-
-  edgeRow: {
-    flexDirection: 'row',
-    minHeight: 30,
+  edgeSpacer: { width: 40, marginRight: 10 },
+  edgeBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
+  edgeLine: { width: 2, height: 14, backgroundColor: '#3b2c6b', marginBottom: 2 },
+  edgeLineCompleted: { backgroundColor: '#22c55e' },
+  badgeClaimSection: { marginTop: 40, marginBottom: 20, alignItems: 'center' },
+  badgeClaimBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, gap: 8, borderWidth: 1,
   },
-
-  edgeSpacer: {
-    width: 40,
-    marginRight: 10,
+  badgeClaimBtnActive: {
+    backgroundColor: '#6366f1', borderColor: '#4f46e5',
+    shadowColor: '#6366f1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-
-  edgeBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-  },
-
-  edgeLine: {
-    width: 2,
-    height: 14,
-    backgroundColor: '#334155',
-    marginBottom: 2,
-  },
-
-  edgeLineCompleted: {
-    backgroundColor: '#22c55e',
-  },
+  badgeClaimBtnDisabled: { backgroundColor: '#0f0b1f', borderColor: '#3b2c6b' },
+  badgeClaimText: { fontFamily: 'Outfit_400Regular', fontSize: 14, fontFamily: 'Outfit_700Bold' },
+  badgeClaimTextActive: { color: '#ffffff' },
+  badgeClaimTextDisabled: { color: '#6b7280' },
 });

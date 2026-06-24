@@ -3,6 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './src/services/supabaseClient';
 import { useAuthStore } from './src/store/authStore';
+import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, Outfit_800ExtraBold, Outfit_900Black } from '@expo-google-fonts/outfit';
+import * as SplashScreen from 'expo-splash-screen';
 import type { Session } from '@supabase/supabase-js';
 import type { RootStackParamList } from './src/types/navigation';
 import type { Roadmap } from './src/types/roadmap';
@@ -13,6 +15,11 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RoadmapScreen from './src/screens/RoadmapScreen';
 import AppTabs from './src/navigation/AppTabs';
+import { ToastProvider } from './src/components/ToastProvider';
+import OnboardingModal from './src/components/OnboardingModal';
+
+// Keep splash screen visible while fonts load
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -77,6 +84,15 @@ export default function App() {
   const { session, setSession, initializing, initializeAuth } = useAuthStore();
   const [demoMode, setDemoMode] = useState(false);
 
+  const [fontsLoaded, fontError] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
+    Outfit_900Black,
+  });
+
   useEffect(() => {
     initializeAuth();
 
@@ -89,65 +105,78 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [initializeAuth, setSession]);
 
-  if (initializing) {
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (initializing || (!fontsLoaded && !fontError)) {
     return null;
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {session ? (
-          <>
-            <Stack.Screen
-              name="AppTabs"
-              component={AppTabs}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="History"
-              component={HistoryScreen}
-              options={{
-                title: 'Historial',
-                headerTintColor: '#38bdf8',
-                headerStyle: { backgroundColor: '#0f172a' },
-              }}
-            />
-            <Stack.Screen
-              name="Profile"
-              component={ProfileScreen}
-              options={{
-                title: 'Perfil',
-                headerTintColor: '#38bdf8',
-                headerStyle: { backgroundColor: '#0f172a' },
-              }}
-            />
+    <ToastProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          {session ? (
+            <>
+              <Stack.Screen
+                name="AppTabs"
+                component={AppTabs}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="History"
+                component={HistoryScreen}
+                options={{
+                  title: 'Historial',
+                  headerTintColor: '#0f172a',
+                  headerStyle: { backgroundColor: '#ffffff' },
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{
+                  title: 'Perfil',
+                  headerTintColor: '#0f172a',
+                  headerStyle: { backgroundColor: '#ffffff' },
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="Roadmap"
+                component={RoadmapScreen}
+                options={{
+                  title: 'Mi Ruta',
+                  headerTintColor: '#0f172a',
+                  headerStyle: { backgroundColor: '#ffffff' },
+                  headerShadowVisible: false,
+                }}
+              />
+            </>
+          ) : demoMode ? (
             <Stack.Screen
               name="Roadmap"
               component={RoadmapScreen}
+              initialParams={{ roadmap: demoRoadmap }}
               options={{
-                title: 'Mi Ruta',
-                headerTintColor: '#38bdf8',
-                headerStyle: { backgroundColor: '#0f172a' },
+                title: 'Demo Roadmap',
+                headerTintColor: '#0f172a',
+                headerStyle: { backgroundColor: '#ffffff' },
+                headerShadowVisible: false,
               }}
             />
-          </>
-        ) : demoMode ? (
-          <Stack.Screen
-            name="Roadmap"
-            component={RoadmapScreen}
-            initialParams={{ roadmap: demoRoadmap }}
-            options={{
-              title: 'Demo Roadmap',
-              headerTintColor: '#38bdf8',
-              headerStyle: { backgroundColor: '#0f172a' },
-            }}
-          />
-        ) : (
-          <Stack.Screen name="Login" options={{ headerShown: false }}>
-            {() => <LoginScreen onDemoLogin={() => setDemoMode(true)} />}
-          </Stack.Screen>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          ) : (
+            <Stack.Screen name="Login" options={{ headerShown: false }}>
+              {() => <LoginScreen onDemoLogin={() => setDemoMode(true)} />}
+            </Stack.Screen>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+      {fontsLoaded && <OnboardingModal />}
+    </ToastProvider>
   );
 }

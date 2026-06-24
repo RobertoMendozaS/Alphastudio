@@ -17,6 +17,7 @@ import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
 import SurveyModal from '../components/SurveyModal';
 import TestModal from '../components/TestModal';
 import { generateTestQuestions } from '../services/aiService';
+import { useToast } from '../components/ToastProvider';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Home'>,
@@ -40,6 +41,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
   const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveAndSyncTestResult } = useRoadmapStore();
+  const { showToast } = useToast();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -68,7 +70,7 @@ export default function HomeScreen({ navigation }: Props) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        Alert.alert('Sesión expirada', 'Inicia sesión nuevamente.');
+        showToast('Inicia sesión nuevamente para generar rutas.', 'error');
         return;
       }
       const roadmapData = await generateRoadmap(query, session.access_token);
@@ -78,7 +80,7 @@ export default function HomeScreen({ navigation }: Props) {
       setPendingRoadmap(roadmapData);
       setShowSurvey(true);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Ocurrió un error al generar la ruta.');
+      showToast(error.message || 'Ocurrió un error al generar la ruta.', 'error');
     } finally {
       setLoading(false);
     }
@@ -133,7 +135,7 @@ export default function HomeScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
-        colors={['#020617', '#0f172a', '#0c1a2e']}
+        colors={['#09090b', '#0f0b1f', '#17122b']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -153,7 +155,7 @@ export default function HomeScreen({ navigation }: Props) {
           <TextInput
             style={styles.input}
             placeholder="¿Qué quieres aprender hoy?"
-            placeholderTextColor="#475569"
+            placeholderTextColor="#6b7280"
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={handleGenerate}
@@ -197,7 +199,7 @@ export default function HomeScreen({ navigation }: Props) {
                   onPress={() => selectTopic(topic)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="time-outline" size={14} color="#94a3b8" />
+                  <Ionicons name="time-outline" size={14} color="#a78bfa" />
                   <Text style={styles.chipText}>{topic}</Text>
                 </TouchableOpacity>
               ))}
@@ -216,7 +218,7 @@ export default function HomeScreen({ navigation }: Props) {
                   onPress={() => selectTopic(topic)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="bulb-outline" size={14} color="#94a3b8" />
+                  <Ionicons name="bulb-outline" size={14} color="#a78bfa" />
                   <Text style={styles.chipText}>{topic}</Text>
                 </TouchableOpacity>
               ))}
@@ -254,32 +256,32 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#f1f5f9',
+    fontFamily: 'Outfit_400Regular', fontSize: 32,
+    fontFamily: 'Outfit_800ExtraBold',
+    color: '#ffffff',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#94a3b8',
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    color: '#a78bfa',
     lineHeight: 22,
   },
   inputSection: {
     marginBottom: 32,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#3b2c6b',
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    fontSize: 16,
-    color: '#e2e8f0',
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    color: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#4c3a85',
     marginBottom: 16,
   },
   generateBtn: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#8b5cf6',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
@@ -295,16 +297,16 @@ const styles = StyleSheet.create({
   },
   generateBtnText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontFamily: 'Outfit_700Bold',
   },
   topicsSection: {
     flex: 1,
   },
   topicsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
+    fontFamily: 'Outfit_400Regular', fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+    color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -318,17 +320,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#3b2c6b',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#4c3a85',
   },
   chipText: {
-    color: '#cbd5e1',
-    fontSize: 13,
-    fontWeight: '500',
+    color: '#e2e8f0',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
   },
   skeletonContainer: {
     paddingTop: 20,

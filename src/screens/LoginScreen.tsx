@@ -86,7 +86,7 @@ export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
       <StatusBar barStyle="light-content" />
 
       <LinearGradient
-        colors={['#020617', '#0f172a', '#0c1a2e']}
+        colors={['#09090b', '#0f0b1f', '#17122b']}
         style={styles.background}
       />
 
@@ -112,10 +112,10 @@ export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
           </View>
 
           <View style={styles.inputBox}>
-            <Ionicons name="mail-outline" size={18} color="#475569" />
+            <Ionicons name="mail-outline" size={18} color="#6b7280" />
             <TextInput
               placeholder="Email"
-              placeholderTextColor="#334155"
+              placeholderTextColor="#4c3a85"
               value={email}
               onChangeText={setEmail}
               style={styles.input}
@@ -125,10 +125,10 @@ export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
           </View>
 
           <View style={styles.inputBox}>
-            <Ionicons name="lock-closed-outline" size={18} color="#475569" />
+            <Ionicons name="lock-closed-outline" size={18} color="#6b7280" />
             <TextInput
               placeholder="Password"
-              placeholderTextColor="#334155"
+              placeholderTextColor="#4c3a85"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
@@ -142,7 +142,7 @@ export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
             activeOpacity={0.85}
             disabled={loading}
           >
-            <LinearGradient colors={['#06b6d4', '#6366f1']} style={styles.btn}>
+            <LinearGradient colors={['#8b5cf6', '#0ea5e9']} style={styles.btn}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -174,7 +174,7 @@ export default function LoginScreen({ onDemoLogin }: LoginScreenProps) {
           </View>
 
           <TouchableOpacity style={styles.googleButton} onPress={handleGoogleAuth} disabled={loading}>
-            <Ionicons name="logo-google" size={20} color="#0f172a" style={styles.googleIcon} />
+            <Ionicons name="logo-google" size={20} color="#0f0b1f" style={styles.googleIcon} />
             <Text style={styles.googleButtonText}>Continuar con Google</Text>
           </TouchableOpacity>
 
@@ -203,31 +203,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   card: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 18,
     padding: 22,
   },
   title: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
+    fontFamily: 'Outfit_400Regular', fontSize: 22,
+    fontFamily: 'Outfit_800ExtraBold',
     letterSpacing: 6,
     marginTop: 8,
   },
   subtitle: {
-    color: '#64748b',
-    fontSize: 12,
+    color: '#94a3b8',
+    fontFamily: 'Outfit_400Regular', fontSize: 12,
     marginTop: 6,
     marginBottom: 20,
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0c1a2e',
+    backgroundColor: '#17122b',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -236,8 +236,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     marginLeft: 10,
-    color: '#e2e8f0',
-    fontSize: 13,
+    color: '#f8fafc',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
   },
   btnWrap: {
     marginTop: 10,
@@ -252,16 +252,15 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 13.5,
+    fontFamily: 'Outfit_700Bold', fontSize: 13.5,
   },
   switchButton: {
     marginTop: 16,
     alignItems: 'center',
   },
   switchText: {
-    color: '#64748b',
-    fontSize: 13,
+    color: '#94a3b8',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -271,18 +270,18 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#3b2c6b',
   },
   dividerText: {
-    color: '#475569',
+    color: '#6b7280',
     marginHorizontal: 12,
-    fontSize: 13,
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
     paddingVertical: 14,
     borderRadius: 12,
   },
@@ -290,16 +289,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   googleButtonText: {
-    color: '#0f172a',
-    fontWeight: '700',
-    fontSize: 13.5,
+    color: '#0f0b1f',
+    fontFamily: 'Outfit_700Bold', fontSize: 13.5,
   },
   demoBtn: {
     marginTop: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#38bdf8',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#3b2c6b',
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -307,13 +305,12 @@ const styles = StyleSheet.create({
   },
   demoBtnText: {
     color: '#38bdf8',
-    fontWeight: '700',
-    fontSize: 13,
+    fontFamily: 'Outfit_700Bold', fontSize: 13,
   },
   footer: {
     textAlign: 'center',
     marginTop: 18,
-    color: '#475569',
-    fontSize: 11,
+    color: '#6b7280',
+    fontFamily: 'Outfit_400Regular', fontSize: 11,
   },
 });

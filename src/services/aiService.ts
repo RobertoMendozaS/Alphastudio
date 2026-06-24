@@ -19,28 +19,28 @@ async function generateRoadmapReal(userQuery: string): Promise<Roadmap> {
     throw Object.assign(new Error('API key de xAI no configurada'), { status: 401 });
   }
 
+  const bodyPayload = {
+    model: 'grok-beta',
+    messages: [
+      {
+        role: 'user',
+        content: `Eres un planificador de rutas de aprendizaje. Genera una ruta en formato JSON con title, description, nodes (label, description, resources con title/url/type), y edges. Responde SOLO con el JSON.\n\nTema: ${userQuery}`,
+      }
+    ],
+  };
+
   const response = await fetch(XAI_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${XAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'grok-beta',
-      messages: [
-        {
-          role: 'system',
-          content: 'Eres un planificador de rutas de aprendizaje. Genera una ruta en formato JSON con title, description, nodes (label, description, resources con title/url/type), y edges. Responde SOLO con el JSON.',
-        },
-        {
-          role: 'user',
-          content: userQuery,
-        },
-      ],
-    }),
+    body: JSON.stringify(bodyPayload),
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[xAI] 400 Bad Request - Body:`, errorText);
     const error = new Error(`Error de API: ${response.status} ${response.statusText}`);
     (error as any).status = response.status;
     throw error;

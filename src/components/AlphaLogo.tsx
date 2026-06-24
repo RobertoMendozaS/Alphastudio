@@ -25,7 +25,7 @@ export default function AlphaLogo() {
   return (
     <Animated.View style={{ transform: [{ scale: pulse }] }}>
       <LinearGradient
-        colors={['#06b6d4', '#6366f1']}
+        colors={['#8b5cf6', '#0ea5e9']}
         style={{
           width: 82,
           height: 82,
@@ -35,7 +35,7 @@ export default function AlphaLogo() {
           marginBottom: 18,
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 34, fontWeight: '900' }}>α</Text>
+        <Text style={{ color: '#fff', fontFamily: 'Outfit_400Regular', fontSize: 34, fontFamily: 'Outfit_900Black' }}>α</Text>
       </LinearGradient>
     </Animated.View>
   );

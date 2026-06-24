@@ -16,7 +16,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../types/navigation';
 import type { Roadmap } from '../types/roadmap';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonHistoryCard, EmptyState } from './SkeletonComponents';
 import { useAuthStore } from '../store/authStore';
 import { useRoadmapStore } from '../store/roadmapStore';
@@ -99,7 +98,7 @@ function RoadmapCard({
         activeOpacity={0.82}
       >
         <View style={styles.cardIcon}>
-          <Ionicons name="map-outline" size={18} color="#06b6d4" />
+          <Ionicons name="map-outline" size={18} color="#8b5cf6" />
         </View>
 
         <View style={styles.cardBody}>
@@ -108,7 +107,7 @@ function RoadmapCard({
             <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
           )}
           <View style={styles.cardMeta}>
-            <Ionicons name="time-outline" size={11} color="#334155" />
+            <Ionicons name="time-outline" size={11} color="#4c3a85" />
             <Text style={styles.cardDate}>
               {relativeDate(item.created_at)}
             </Text>
@@ -255,14 +254,13 @@ export default function HistoryScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#020617', '#0f172a', '#0c1a2e']} style={StyleSheet.absoluteFill} />
 
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="arrow-back" size={24} color="#475569" />
+          <Ionicons name="arrow-back" size={24} color="#6b7280" />
         </TouchableOpacity>
 
         <View style={styles.badge}>
@@ -283,11 +281,11 @@ export default function HistoryScreen({ navigation }: Props) {
       {!loading && roadmaps.length > 0 && (
         <View style={styles.searchWrap}>
           <View style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}>
-            <Ionicons name="search-outline" size={15} color={searchFocused ? '#06b6d4' : '#334155'} />
+            <Ionicons name="search-outline" size={15} color={searchFocused ? '#8b5cf6' : '#4c3a85'} />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar rutas…"
-              placeholderTextColor="#1e293b"
+              placeholderTextColor="#3b2c6b"
               value={search}
               onChangeText={setSearch}
               onFocus={() => setSearchFocused(true)}
@@ -295,7 +293,7 @@ export default function HistoryScreen({ navigation }: Props) {
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={15} color="#334155" />
+                <Ionicons name="close-circle" size={15} color="#4c3a85" />
               </TouchableOpacity>
             )}
           </View>
@@ -341,8 +339,8 @@ export default function HistoryScreen({ navigation }: Props) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor="#06b6d4"
-                colors={['#06b6d4']}
+                tintColor="#8b5cf6"
+                colors={['#8b5cf6']}
               />
             }
             renderItem={({ item, index }) => (
@@ -362,7 +360,7 @@ export default function HistoryScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#09090b' },
 
   header: {
     flexDirection: 'row',
@@ -377,29 +375,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 5,
   },
-  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#06b6d4' },
-  badgeTxt: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
+  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8b5cf6' },
+  badgeTxt: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
 
   countBadge: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#0ea5e9',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  countTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  countTxt: { color: '#fff', fontFamily: 'Outfit_400Regular', fontSize: 10, fontFamily: 'Outfit_700Bold' },
 
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#0ea5e9',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -412,20 +410,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#17122b',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     paddingHorizontal: 12,
     paddingVertical: 10,
+    shadowColor: '#a78bfa',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   searchBoxFocused: {
-    borderColor: '#06b6d4',
+    borderColor: '#0ea5e9',
   },
   searchInput: {
     flex: 1,
-    color: '#e2e8f0',
-    fontSize: 13,
+    color: '#f8fafc',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
     padding: 0,
   },
 
@@ -435,23 +438,28 @@ const styles = StyleSheet.create({
 
   card: {
     flexDirection: 'row',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0b1f',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     alignItems: 'center',
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   cardIcon: {
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: '#0c1a2e',
+    backgroundColor: '#17122b',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#3b2c6b',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -459,17 +467,17 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1 },
 
   cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#e2e8f0',
+    fontFamily: 'Outfit_400Regular', fontSize: 15,
+    fontFamily: 'Outfit_700Bold',
+    color: '#f8fafc',
     marginBottom: 3,
   },
 
   cardDesc: {
-    fontSize: 12,
-    color: '#64748b',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    color: '#a78bfa',
     marginBottom: 5,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   cardMeta: {
     flexDirection: 'row',
@@ -477,8 +485,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardDate: {
-    fontSize: 11,
-    color: '#334155',
+    fontFamily: 'Outfit_400Regular', fontSize: 11,
+    color: '#94a3b8',
   },
 
   deleteBtn: {
