@@ -8,4 +8,10 @@ const config = getDefaultConfig(__dirname);
 // which causes a fatal EINVAL crash in the dependency graph.
 config.resolver.unstable_enableSymlinks = false;
 
+// Ignore backup/locked node_modules folders that cause readlink errors
+config.resolver.blockList = [
+  /node_modules_locked_.*/,
+  /node_modules_old_.*/,
+];
+
 module.exports = config;

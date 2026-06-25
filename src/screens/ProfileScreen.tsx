@@ -105,11 +105,11 @@ export default function ProfileScreen({ navigation }: Props) {
         display_name: editDisplayName,
         avatar_url: editAvatarUrl || undefined,
       });
-      toast.show('Los cambios se guardaron correctamente.', 'success');
+      toast.showToast('Los cambios se guardaron correctamente.', 'success');
       setEditModalVisible(false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error al actualizar perfil';
-      toast.show(message, 'error');
+      toast.showToast(message, 'error');
     } finally {
       setEditSaving(false);
     }
@@ -132,7 +132,7 @@ export default function ProfileScreen({ navigation }: Props) {
         const { streak: newStreak } = await getStreak(user.id);
         setStreak(newStreak);
         setCheckedInToday(true);
-        toast.show(
+        toast.showToast(
           `¡Check-in completado! Llevas ${newStreak} día${newStreak !== 1 ? 's' : ''} consecutivo${newStreak !== 1 ? 's' : ''}.`,
           'success'
         );
@@ -140,14 +140,14 @@ export default function ProfileScreen({ navigation }: Props) {
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
-        toast.show('Ya hiciste check-in hoy. Vuelve mañana.', 'info');
+        toast.showToast('Ya hiciste check-in hoy. Vuelve mañana.', 'info');
       }
     } catch (error: unknown) {
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
       const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado';
-      toast.show(message, 'error');
+      toast.showToast(message, 'error');
     } finally {
       setCheckingIn(false);
     }

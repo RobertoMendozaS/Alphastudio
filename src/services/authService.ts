@@ -37,7 +37,7 @@ export const updateProfile = async (userId: string, updates: { display_name?: st
 export const performCheckIn = async (userId: string) => {
   const { error } = await supabase.from('check_ins').insert([{ user_id: userId }]);
   if (error) {
-    if (error.code === '23505') {
+    if (error.code === '23505' || error.code === '409' || error.message?.toLowerCase().includes('duplicate')) {
       return false;
     }
     throw new Error(`Error al realizar check-in: ${error.message}`);
