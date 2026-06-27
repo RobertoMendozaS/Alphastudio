@@ -8,7 +8,7 @@ import {
 import { supabase } from '../services/supabaseClient';
 import {
   getRoadmapHistory, getRoadmapById,
-  rowToRoadmap, RoadmapSummary,
+  rowToRoadmap, RoadmapSummary, deleteRoadmap,
 } from '../services/roadmapService';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -225,23 +225,38 @@ export default function HistoryScreen({ navigation }: Props) {
   };
 
   const handleDelete = (roadmapId: string, title: string) => {
+    const confirmDelete = () => {
+      setDeletingId(roadmapId);
+      setTimeout(async () => {
+        await removeRoadmapFromHistory(title);
+        
+        if (!isDemo) {
+          try {
+            if (roadmapId && roadmapId !== title) {
+              await deleteRoadmap(roadmapId);
+            }
+          } catch (error) {
+            console.log('Delete remote error:', error);
+          }
+        }
+
+        setDeletingId(null);
+        loadHistory(true);
+      }, 300);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`);
+      if (confirm) confirmDelete();
+      return;
+    }
+
     Alert.alert(
       'Eliminar ruta',
       `¿Eliminar "${title}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            setDeletingId(roadmapId);
-            setTimeout(async () => {
-              await removeRoadmapFromHistory(title);
-              setDeletingId(null);
-              loadHistory(true);
-            }, 300);
-          },
-        },
+        { text: 'Eliminar', style: 'destructive', onPress: confirmDelete },
       ]
     );
   };
@@ -252,19 +267,23 @@ export default function HistoryScreen({ navigation }: Props) {
   };
 
   const handleClearAll = () => {
+    const confirmClear = async () => {
+      await clearAllHistory();
+      loadHistory(true);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('¿Estás seguro de que quieres eliminar todas las rutas guardadas? Esta acción no se puede deshacer.');
+      if (confirm) confirmClear();
+      return;
+    }
+
     Alert.alert(
       'Limpiar historial',
       '¿Estás seguro de que quieres eliminar todas las rutas guardadas? Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar todo',
-          style: 'destructive',
-          onPress: async () => {
-            await clearAllHistory();
-            loadHistory(true);
-          },
-        },
+        { text: 'Eliminar todo', style: 'destructive', onPress: confirmClear },
       ]
     );
   };
