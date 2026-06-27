@@ -15,8 +15,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AlphaLogo from '../components/AlphaLogo';
 import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
 import SurveyModal from '../components/SurveyModal';
-import TestModal from '../components/TestModal';
-import { generateTestQuestions } from '../services/aiService';
 import { useToast } from '../components/ToastProvider';
 
 type Props = CompositeScreenProps<
@@ -36,11 +34,9 @@ export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
-  const [showPreTest, setShowPreTest] = useState(false);
-  const [preTestQuestions, setPreTestQuestions] = useState<any[]>([]);
   const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveAndSyncTestResult } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, clearRecentTopics } = useRoadmapStore();
   const { showToast } = useToast();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -73,7 +69,9 @@ export default function HomeScreen({ navigation }: Props) {
         showToast('Inicia sesión nuevamente para generar rutas.', 'error');
         return;
       }
+      
       const roadmapData = await generateRoadmap(query, session.access_token);
+      
       await saveRecentTopic(query);
       await saveRoadmapToHistory(roadmapData);
       setCurrentRoadmap(roadmapData);
@@ -86,44 +84,38 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const cleanupWebModal = () => {
+    if (Platform.OS === 'web') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.removeAttribute('aria-hidden');
+      const root = document.getElementById('root');
+      if (root) {
+        root.style.pointerEvents = 'auto';
+        root.removeAttribute('aria-hidden');
+      }
+    }
+  };
+
   const handleSurveySubmit = async (response: any) => {
     await saveSurveyResponse(response);
     setShowSurvey(false);
-    const questions = await generateTestQuestions(query);
-    setPreTestQuestions(questions);
-    setShowPreTest(true);
+    if (pendingRoadmap) {
+      setTimeout(() => {
+        cleanupWebModal();
+        navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
+        setPendingRoadmap(null);
+      }, 300);
+    }
   };
 
   const handleSurveySkip = () => {
     setShowSurvey(false);
-    const navigateToRoadmap = async () => {
-      const questions = await generateTestQuestions(query);
-      setPreTestQuestions(questions);
-      setShowPreTest(true);
-    };
-    navigateToRoadmap();
-  };
-
-  const handlePreTestSubmit = async (result: any) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await saveAndSyncTestResult(result, session.user.id);
-    } else {
-      const { saveTestResult } = useRoadmapStore.getState();
-      await saveTestResult(result);
-    }
-    setShowPreTest(false);
     if (pendingRoadmap) {
-      navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
-      setPendingRoadmap(null);
-    }
-  };
-
-  const handlePreTestSkip = () => {
-    setShowPreTest(false);
-    if (pendingRoadmap) {
-      navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
-      setPendingRoadmap(null);
+      setTimeout(() => {
+        cleanupWebModal();
+        navigation.navigate('Roadmap', { roadmap: pendingRoadmap });
+        setPendingRoadmap(null);
+      }, 300);
     }
   };
 
@@ -190,7 +182,12 @@ export default function HomeScreen({ navigation }: Props) {
 
         {!loading && recentTopics.length > 0 && (
           <View style={styles.topicsSection}>
-            <Text style={styles.topicsTitle}>Temas recientes</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.topicsTitle}>Temas recientes</Text>
+              <TouchableOpacity onPress={clearRecentTopics}>
+                <Text style={{ color: '#ef4444', fontFamily: 'Outfit_600SemiBold', fontSize: 12 }}>Limpiar</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.chipsContainer}>
               {recentTopics.map((topic, index) => (
                 <TouchableOpacity
@@ -231,13 +228,6 @@ export default function HomeScreen({ navigation }: Props) {
         topic={query}
         onSubmit={handleSurveySubmit}
         onSkip={handleSurveySkip}
-      />
-      <TestModal
-        visible={showPreTest}
-        title={query}
-        questions={preTestQuestions}
-        onSubmit={handlePreTestSubmit}
-        onSkip={handlePreTestSkip}
       />
     </View>
   );
@@ -304,12 +294,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topicsTitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
     color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 12,
   },
   chipsContainer: {
     flexDirection: 'row',

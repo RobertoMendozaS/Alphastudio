@@ -20,7 +20,7 @@ async function generateRoadmapReal(userQuery: string): Promise<Roadmap> {
   }
 
   const bodyPayload = {
-    model: 'grok-beta',
+    model: 'grok-2-latest',
     messages: [
       {
         role: 'user',
@@ -181,7 +181,7 @@ export const generateTestQuestions = async (topic: string): Promise<TestQuestion
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'grok-beta',
+        model: 'grok-2-latest',
         messages: [
           {
             role: 'system',
@@ -200,5 +200,78 @@ export const generateTestQuestions = async (topic: string): Promise<TestQuestion
     return generateTestMock(topic);
   } catch {
     return generateTestMock(topic);
+  }
+};
+
+export interface DynamicBadge {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  desc: string;
+  topic: string;
+}
+
+function generateBadgeMock(topic: string): DynamicBadge {
+  const hash = Array.from(topic).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+  const color = colors[hash % colors.length];
+  
+  return {
+    id: `badge_${Date.now()}_${hash}`,
+    name: `Explorador de ${topic}`,
+    icon: 'star',
+    color,
+    desc: `Otorgado por aventurarte a estudiar ${topic}.`,
+    topic,
+  };
+}
+
+export const generateDynamicBadge = async (topic: string): Promise<DynamicBadge> => {
+  try {
+    if (!XAI_API_KEY || XAI_API_KEY === 'undefined' || XAI_API_KEY === '') {
+      return generateBadgeMock(topic);
+    }
+    const response = await fetch(XAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${XAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'grok-2-latest',
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un diseñador de recompensas. Genera una insignia basada en el tema que el usuario quiere estudiar. Responde SOLO con un objeto JSON que tenga: "name" (string, un título épico corto), "icon" (string, el nombre de un icono de Ionicons compatible como "code-slash", "planet", "bulb", "rocket", "laptop", "library", "color-palette"), "color" (string, código hex representativo), "desc" (string, una descripción motivadora muy breve). No incluyas markdown, solo el JSON puro.',
+          },
+          { role: 'user', content: topic },
+        ],
+      }),
+    });
+    
+    if (!response.ok) return generateBadgeMock(topic);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return generateBadgeMock(topic);
+    
+    // Attempt to extract json if it wrapped it in markdown code blocks by accident
+    const jsonStr = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    
+    if (parsed.name && parsed.icon && parsed.color && parsed.desc) {
+      return {
+        id: `badge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: parsed.name,
+        icon: parsed.icon,
+        color: parsed.color,
+        desc: parsed.desc,
+        topic,
+      };
+    }
+    return generateBadgeMock(topic);
+  } catch (err) {
+    console.error('Error generating badge:', err);
+    return generateBadgeMock(topic);
   }
 };

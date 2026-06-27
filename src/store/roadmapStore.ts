@@ -4,6 +4,7 @@ import type { Roadmap } from '../types/roadmap';
 import type { SurveyResponse } from '../types/survey';
 import type { TestResult } from '../types/test';
 import { syncTestResult } from '../services/testService';
+import type { DynamicBadge } from '../services/aiService';
 
 type RoadmapState = {
   currentRoadmap: Roadmap | null;
@@ -12,6 +13,7 @@ type RoadmapState = {
   completedNodes: string[];
   surveyResponses: SurveyResponse[];
   testResults: TestResult[];
+  dynamicBadges: DynamicBadge[];
 
   setCurrentRoadmap: (roadmap: Roadmap) => void;
   loadRecentTopics: () => Promise<void>;
@@ -27,6 +29,10 @@ type RoadmapState = {
   saveTestResult: (result: TestResult) => Promise<void>;
   saveAndSyncTestResult: (result: TestResult, userId: string) => Promise<void>;
   loadTestResults: () => Promise<void>;
+  saveDynamicBadge: (badge: DynamicBadge) => Promise<void>;
+  loadDynamicBadges: () => Promise<void>;
+  clearAllHistory: () => Promise<void>;
+  clearRecentTopics: () => Promise<void>;
 };
 
 const DEFAULT_TOPICS = ['React Native', 'Machine Learning', 'Diseño UX', 'Python Básico'];
@@ -38,6 +44,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   completedNodes: [],
   surveyResponses: [],
   testResults: [],
+  dynamicBadges: [],
 
   setCurrentRoadmap: (roadmap) =>
     set({
@@ -115,6 +122,24 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       completedNodes: [],
     }),
 
+  clearAllHistory: async () => {
+    try {
+      await AsyncStorage.removeItem('@roadmap_history');
+      set({ localRoadmaps: [] });
+    } catch {
+      // Silent fail
+    }
+  },
+
+  clearRecentTopics: async () => {
+    try {
+      await AsyncStorage.removeItem('@recent_topics');
+      set({ recentTopics: [] });
+    } catch {
+      // Silent fail
+    }
+  },
+
   saveSurveyResponse: async (response) => {
     try {
       const stored = await AsyncStorage.getItem('@survey_responses');
@@ -180,6 +205,30 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       set({ localRoadmaps: stored ? JSON.parse(stored) : [] });
     } catch {
       set({ localRoadmaps: [] });
+    }
+  },
+
+  saveDynamicBadge: async (badge) => {
+    try {
+      const stored = await AsyncStorage.getItem('@dynamic_badges');
+      const all: DynamicBadge[] = stored ? JSON.parse(stored) : [];
+      // Prevent duplicates by checking topic
+      if (!all.some(b => b.topic.toLowerCase() === badge.topic.toLowerCase())) {
+        all.push(badge);
+        await AsyncStorage.setItem('@dynamic_badges', JSON.stringify(all));
+        set({ dynamicBadges: all });
+      }
+    } catch {
+      // Silent fail
+    }
+  },
+
+  loadDynamicBadges: async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@dynamic_badges');
+      set({ dynamicBadges: stored ? JSON.parse(stored) : [] });
+    } catch {
+      set({ dynamicBadges: [] });
     }
   },
 }));

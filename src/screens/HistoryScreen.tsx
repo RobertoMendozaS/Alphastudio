@@ -136,7 +136,7 @@ export default function HistoryScreen({ navigation }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isDemo = useAuthStore((state) => state.isDemo);
-  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap, removeRoadmapFromHistory } = useRoadmapStore();
+  const { localRoadmaps, loadLocalRoadmaps, setCurrentRoadmap, removeRoadmapFromHistory, clearAllHistory } = useRoadmapStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
@@ -251,6 +251,24 @@ export default function HistoryScreen({ navigation }: Props) {
     loadHistory(true);
   };
 
+  const handleClearAll = () => {
+    Alert.alert(
+      'Limpiar historial',
+      '¿Estás seguro de que quieres eliminar todas las rutas guardadas? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar todo',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllHistory();
+            loadHistory(true);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -273,9 +291,13 @@ export default function HistoryScreen({ navigation }: Props) {
           )}
         </View>
 
-        <View style={styles.avatar}>
-          <Ionicons name="time-outline" size={16} color="#fff" />
-        </View>
+        {roadmaps.length > 0 && !loading ? (
+          <TouchableOpacity onPress={handleClearAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="trash-bin-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       {!loading && roadmaps.length > 0 && (

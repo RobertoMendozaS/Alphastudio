@@ -35,6 +35,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const loadSurveyResponses = useRoadmapStore((state) => state.loadSurveyResponses);
   const testResults = useRoadmapStore((state) => state.testResults);
   const loadTestResults = useRoadmapStore((state) => state.loadTestResults);
+  const dynamicBadges = useRoadmapStore((state) => state.dynamicBadges);
+  const loadDynamicBadges = useRoadmapStore((state) => state.loadDynamicBadges);
   const [streak, setStreak] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,10 @@ export default function ProfileScreen({ navigation }: Props) {
   }, [user]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadProfile);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfile();
+      loadDynamicBadges();
+    });
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -89,7 +94,7 @@ export default function ProfileScreen({ navigation }: Props) {
       }),
     ]).start();
     return unsubscribe;
-  }, [navigation, loadProfile, fadeAnim, slideAnim]);
+  }, [navigation, loadProfile, loadDynamicBadges, fadeAnim, slideAnim]);
 
   const handleOpenEdit = () => {
     setEditDisplayName(user?.email ?? '');
@@ -302,6 +307,15 @@ export default function ProfileScreen({ navigation }: Props) {
                 </View>
               );
             })}
+            {dynamicBadges.map((b) => (
+              <View key={b.id} style={styles.badgeCard}>
+                <View style={[styles.badgeIconWrap, { backgroundColor: b.color + '20' }]}>
+                  <Ionicons name={b.icon as any} size={28} color={b.color} />
+                </View>
+                <Text style={styles.badgeName}>{b.name}</Text>
+                <Text style={styles.badgeDesc} numberOfLines={2}>{b.desc}</Text>
+              </View>
+            ))}
           </ScrollView>
         </View>
 

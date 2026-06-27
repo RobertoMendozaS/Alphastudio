@@ -49,12 +49,12 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
       Animated.timing(scaleAnims[star - 1], {
         toValue: 1.3,
         duration: 100,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(scaleAnims[star - 1], {
         toValue: 1,
         duration: 150,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
   };
@@ -97,13 +97,13 @@ export default function SurveyModal({ visible, topic, onSubmit, onSkip }: Survey
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 400,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 500,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
     } else {
@@ -314,21 +314,21 @@ const surveyStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'Outfit_400Regular', fontSize: 22,
+    fontFamily: 'Outfit_400Regular', fontSize: 26,
     fontFamily: 'Outfit_800ExtraBold',
-    color: '#f8fafc',
+    color: '#ffffff',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 14,
-    color: '#a78bfa',
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    color: '#c4b5fd',
     marginBottom: 28,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   label: {
-    fontFamily: 'Outfit_400Regular', fontSize: 14,
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
     fontFamily: 'Outfit_700Bold',
-    color: '#f8fafc',
+    color: '#ffffff',
     marginBottom: 12,
     marginTop: 8,
   },
@@ -355,9 +355,10 @@ const surveyStyles = StyleSheet.create({
     backgroundColor: 'rgba(139, 92, 246, 0.05)',
   },
   optionText: {
-    fontFamily: 'Outfit_400Regular', fontSize: 12,
-    color: '#94a3b8',
+    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    color: '#cbd5e1',
     fontFamily: 'Outfit_600SemiBold',
+    textAlign: 'center',
   },
   optionTextActive: {
     color: '#8b5cf6',
@@ -405,8 +406,8 @@ const surveyStyles = StyleSheet.create({
     backgroundColor: '#8b5cf6',
   },
   gridText: {
-    fontFamily: 'Outfit_400Regular', fontSize: 13,
-    color: '#a78bfa',
+    fontFamily: 'Outfit_400Regular', fontSize: 14,
+    color: '#cbd5e1',
     flex: 1,
   },
   gridTextActive: {
@@ -432,8 +433,8 @@ const surveyStyles = StyleSheet.create({
     backgroundColor: 'rgba(139, 92, 246, 0.05)',
   },
   rowText: {
-    fontFamily: 'Outfit_400Regular', fontSize: 14,
-    color: '#a78bfa',
+    fontFamily: 'Outfit_400Regular', fontSize: 15,
+    color: '#cbd5e1',
   },
   rowTextActive: {
     color: '#f8fafc',
@@ -464,8 +465,8 @@ const surveyStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipText: {
-    color: '#e2e8f0',
-    fontFamily: 'Outfit_400Regular', fontSize: 15,
+    color: '#f8fafc',
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
     fontFamily: 'Outfit_700Bold',
   },
   submitGradient: {
@@ -478,7 +479,7 @@ const surveyStyles = StyleSheet.create({
   },
   submitText: {
     color: '#ffffff',
-    fontFamily: 'Outfit_400Regular', fontSize: 15,
+    fontFamily: 'Outfit_400Regular', fontSize: 16,
     fontFamily: 'Outfit_700Bold',
   },
 });

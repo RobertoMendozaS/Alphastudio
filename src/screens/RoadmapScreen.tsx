@@ -20,7 +20,9 @@ import { RoadmapNode, Resource } from '../types/roadmap';
 import { useRoadmapStore } from '../store/roadmapStore';
 import { EmptyState } from '../screens/SkeletonComponents';
 import TestModal from '../components/TestModal';
-import { generateTestQuestions } from '../services/aiService';
+import BadgeAnimationModal from '../components/BadgeAnimationModal';
+import { generateTestQuestions, generateDynamicBadge } from '../services/aiService';
+import type { DynamicBadge } from '../services/aiService';
 import { supabase } from '../services/supabaseClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Roadmap'>;
@@ -32,7 +34,9 @@ export default function RoadmapScreen({ route, navigation }: Props) {
 
   const [showPostTest, setShowPostTest] = useState(false);
   const [postTestQuestions, setPostTestQuestions] = useState<any[]>([]);
-  const postTestTriggered = useRef(false);
+  const [showBadgeAnimation, setShowBadgeAnimation] = useState(false);
+  const [earnedBadge, setEarnedBadge] = useState<DynamicBadge | null>(null);
+  const [isGeneratingBadge, setIsGeneratingBadge] = useState(false);
 
   useEffect(() => {
     setCurrentRoadmap(routeRoadmap);
@@ -47,17 +51,10 @@ export default function RoadmapScreen({ route, navigation }: Props) {
     totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
   const allCompleted = completedCount > 0 && completedCount === totalNodes;
 
+  // No automatically trigger postTest anymore
   useEffect(() => {
-    if (allCompleted && !postTestTriggered.current) {
-      postTestTriggered.current = true;
-      const loadTest = async () => {
-        const questions = await generateTestQuestions(roadmap.title.replace('Ruta para aprender ', ''));
-        setPostTestQuestions(questions);
-        setShowPostTest(true);
-      };
-      loadTest();
-    }
-  }, [allCompleted, roadmap.title]);
+    // Just keeping the effect slot if needed, but removed the auto-trigger logic.
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -109,22 +106,57 @@ export default function RoadmapScreen({ route, navigation }: Props) {
       await saveTestResult(postResult);
     }
     setShowPostTest(false);
-    const preTest = testResults.find((r: any) => r.topic === result.topic && r.type === 'pre');
-    if (preTest) {
-      const prePct = Math.round((preTest.score / preTest.total) * 100);
-      const postPct = Math.round((result.score / result.total) * 100);
-      const diff = postPct - prePct;
-      Alert.alert(
-        '¡Ruta completada!',
-        `Resultados:\nPre‑test: ${prePct}%\nPost‑test: ${postPct}%\nMejora: ${diff > 0 ? '+' : ''}${diff}%${diff > 0 ? ' 🎉' : ''}`
-      );
+
+    // Give badge ONLY if score is 100%
+    if (result.score === result.total && result.total > 0) {
+      setIsGeneratingBadge(true);
+      try {
+        const topic = roadmap.title.replace('Ruta para aprender ', '');
+        const badge = await generateDynamicBadge(topic);
+        setEarnedBadge(badge);
+        setShowBadgeAnimation(true);
+      } catch (e) {
+        Alert.alert('Error', 'Hubo un problema generando tu insignia.');
+      } finally {
+        setIsGeneratingBadge(false);
+      }
     } else {
-      Alert.alert('Ruta completada', `Post‑test: ${result.score}/${result.total} (${Math.round((result.score / result.total) * 100)}%)`);
+      Alert.alert('Casi lo logras', `Obtuviste ${result.score}/${result.total}. Debes responder correctamente todas las preguntas para obtener la insignia.`);
     }
   };
 
   const handlePostTestSkip = () => {
     setShowPostTest(false);
+    Alert.alert('Test omitido', 'Debes completar el test para obtener tu insignia.');
+  };
+
+  const handleBadgeAnimationClose = async () => {
+    setShowBadgeAnimation(false);
+    if (earnedBadge) {
+      const { saveDynamicBadge } = useRoadmapStore.getState();
+      await saveDynamicBadge(earnedBadge);
+    }
+    await saveRoadmapToHistory(roadmap);
+    await saveCurrentRoadmapLocal();
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        document.body.style.pointerEvents = 'auto';
+        document.body.removeAttribute('aria-hidden');
+        const root = document.getElementById('root');
+        if (root) {
+          root.style.pointerEvents = 'auto';
+          root.removeAttribute('aria-hidden');
+        }
+      }
+      navigation.goBack();
+    }, 300);
+  };
+
+  const handleClaimBadge = async () => {
+    const topic = roadmap.title.replace('Ruta para aprender ', '');
+    const questions = await generateTestQuestions(topic);
+    setPostTestQuestions(questions);
+    setShowPostTest(true);
   };
 
   const handleSaveLocal = async () => {
@@ -328,16 +360,8 @@ export default function RoadmapScreen({ route, navigation }: Props) {
                     styles.badgeClaimBtn,
                     progressPercent === 100 ? styles.badgeClaimBtnActive : styles.badgeClaimBtnDisabled,
                   ]}
-                  disabled={progressPercent !== 100}
-                  onPress={async () => {
-                    await saveRoadmapToHistory(roadmap);
-                    await saveCurrentRoadmapLocal();
-                    Alert.alert(
-                      '¡Insignia Desbloqueada! 🎓',
-                      'Tu progreso ha sido guardado automáticamente en el Historial. La insignia de Erudito te espera en tu perfil.',
-                      [{ text: '¡Genial!', onPress: () => navigation.goBack() }]
-                    );
-                  }}
+                  disabled={progressPercent !== 100 || isGeneratingBadge}
+                  onPress={handleClaimBadge}
                   activeOpacity={0.8}
                 >
                   <Ionicons 
@@ -349,7 +373,7 @@ export default function RoadmapScreen({ route, navigation }: Props) {
                     styles.badgeClaimText,
                     progressPercent === 100 ? styles.badgeClaimTextActive : styles.badgeClaimTextDisabled,
                   ]}>
-                    {progressPercent === 100 ? '¡Reclamar Insignia!' : 'Completa la ruta para tu insignia'}
+                    {isGeneratingBadge ? 'Generando insignia...' : (progressPercent === 100 ? '¡Reclamar Insignia!' : 'Completa la ruta para tu insignia')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -364,6 +388,11 @@ export default function RoadmapScreen({ route, navigation }: Props) {
         questions={postTestQuestions}
         onSubmit={handlePostTestSubmit}
         onSkip={handlePostTestSkip}
+      />
+      <BadgeAnimationModal
+        visible={showBadgeAnimation}
+        badge={earnedBadge}
+        onClose={handleBadgeAnimationClose}
       />
     </View>
   );
