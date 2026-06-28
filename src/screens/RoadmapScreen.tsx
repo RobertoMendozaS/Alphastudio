@@ -154,7 +154,7 @@ export default function RoadmapScreen({ route, navigation }: Props) {
 
   const handleClaimBadge = async () => {
     const topic = roadmap.title.replace('Ruta para aprender ', '');
-    const questions = await generateTestQuestions(topic);
+    const questions = await generateTestQuestions(topic, 'advanced', roadmap.nodes);
     setPostTestQuestions(questions);
     setShowPostTest(true);
   };
@@ -388,6 +388,7 @@ export default function RoadmapScreen({ route, navigation }: Props) {
         questions={postTestQuestions}
         onSubmit={handlePostTestSubmit}
         onSkip={handlePostTestSkip}
+        testType="post"
       />
       <BadgeAnimationModal
         visible={showBadgeAnimation}
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 32, paddingBottom: 10,
   },
-  headerTitle: { fontFamily: 'Outfit_400Regular', fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#f8fafc' },
+  headerTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#f8fafc' },
   badge: {
     alignSelf: 'flex-start',
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f0b1f',
@@ -412,11 +413,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8b5cf6', marginRight: 6 },
-  badgeTxt: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
+  badgeTxt: { color: '#a78bfa', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
   headerActions: { flexDirection: 'row', gap: 8 },
   shareBtn: { padding: 8, backgroundColor: '#0f0b1f', borderRadius: 10, borderWidth: 1, borderColor: '#3b2c6b' },
   content: { flex: 1, paddingHorizontal: 20 },
-  title: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 26, fontFamily: 'Outfit_800ExtraBold', marginBottom: 6, letterSpacing: -0.5 },
+  title: { color: '#f8fafc', fontSize: 26, fontFamily: 'Outfit_800ExtraBold', marginBottom: 6, letterSpacing: -0.5 },
   desc: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 13, marginBottom: 16, lineHeight: 20 },
   progressCard: {
     backgroundColor: '#0f0b1f', borderWidth: 1, borderColor: '#3b2c6b',
@@ -424,9 +425,9 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 2,
   },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  progressTitle: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 14, fontFamily: 'Outfit_700Bold' },
+  progressTitle: { color: '#f8fafc', fontSize: 14, fontFamily: 'Outfit_700Bold' },
   progressSub: { color: '#94a3b8', fontFamily: 'Outfit_400Regular', fontSize: 12, marginTop: 2 },
-  progressPercent: { color: '#22c55e', fontFamily: 'Outfit_400Regular', fontSize: 20, fontFamily: 'Outfit_900Black' },
+  progressPercent: { color: '#22c55e', fontSize: 20, fontFamily: 'Outfit_900Black' },
   progressBar: { height: 8, backgroundColor: '#3b2c6b', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 4 },
   timeline: { paddingBottom: 40, paddingLeft: 16 },
@@ -448,14 +449,14 @@ const styles = StyleSheet.create({
   },
   cardCompleted: { borderColor: '#14532d', backgroundColor: '#0b1f18' },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 },
-  cardTitle: { color: '#f8fafc', fontFamily: 'Outfit_400Regular', fontSize: 15, fontFamily: 'Outfit_700Bold', flex: 1 },
+  cardTitle: { color: '#f8fafc', fontSize: 15, fontFamily: 'Outfit_700Bold', flex: 1 },
   cardTitleCompleted: { color: '#bbf7d0' },
   completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 6 },
-  completedBadgeText: { color: '#22c55e', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_700Bold' },
+  completedBadgeText: { color: '#22c55e', fontSize: 11, fontFamily: 'Outfit_700Bold' },
   cardDesc: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 13, marginBottom: 12, lineHeight: 20 },
   cardDescCompleted: { color: '#86efac' },
   resourcesSection: { borderTopWidth: 1, borderTopColor: '#3b2c6b', paddingTop: 10 },
-  resourcesTitle: { color: '#94a3b8', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_700Bold', marginBottom: 8, textTransform: 'uppercase' },
+  resourcesTitle: { color: '#94a3b8', fontSize: 11, fontFamily: 'Outfit_700Bold', marginBottom: 8, textTransform: 'uppercase' },
   resource: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
   },
   resourceText: {
     color: '#0ea5e9',
-    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    fontSize: 12,
     fontFamily: 'Outfit_500Medium',
     marginLeft: 6,
   },
@@ -486,7 +487,8 @@ const styles = StyleSheet.create({
     shadowColor: '#6366f1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
   badgeClaimBtnDisabled: { backgroundColor: '#0f0b1f', borderColor: '#3b2c6b' },
-  badgeClaimText: { fontFamily: 'Outfit_400Regular', fontSize: 14, fontFamily: 'Outfit_700Bold' },
+  edgeRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  badgeClaimText: { fontSize: 14, fontFamily: 'Outfit_700Bold' },
   badgeClaimTextActive: { color: '#ffffff' },
   badgeClaimTextDisabled: { color: '#6b7280' },
 });

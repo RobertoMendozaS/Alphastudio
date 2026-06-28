@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8b5cf6' },
-  badgeTxt: { color: '#a78bfa', fontFamily: 'Outfit_400Regular', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
+  badgeTxt: { color: '#a78bfa', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
 
   countBadge: {
     backgroundColor: '#0ea5e9',
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  countTxt: { color: '#fff', fontFamily: 'Outfit_400Regular', fontSize: 10, fontFamily: 'Outfit_700Bold' },
+  countTxt: { color: '#fff', fontSize: 10, fontFamily: 'Outfit_700Bold' },
 
   avatar: {
     width: 36,
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1 },
 
   cardTitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 15,
+    fontSize: 15,
     fontFamily: 'Outfit_700Bold',
     color: '#f8fafc',
     marginBottom: 3,

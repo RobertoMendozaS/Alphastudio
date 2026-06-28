@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   },
   message: {
     color: '#f8fafc',
-    fontFamily: 'Outfit_400Regular', fontSize: 14,
+    fontSize: 14,
     fontFamily: 'Outfit_500Medium',
     flexShrink: 1,
   },

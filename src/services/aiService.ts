@@ -1,4 +1,4 @@
-import { Roadmap } from '../types/roadmap';
+import { Roadmap, RoadmapNode } from '../types/roadmap';
 import { parseRoadmap } from '../utils/roadmapValidator';
 import type { TestQuestion } from '../types/test';
 
@@ -137,42 +137,95 @@ export const generateRoadmap = async (userQuery: string, accessToken: string): P
   return generateRoadmapMock(userQuery);
 };
 
-function generateTestMock(topic: string): TestQuestion[] {
+function generateTestMock(topic: string, difficulty: 'basic' | 'advanced', nodes?: RoadmapNode[]): TestQuestion[] {
   const lower = topic.toLowerCase();
-  const questions: TestQuestion[] = [
+
+  if (difficulty === 'basic') {
+    return [
+      {
+        question: `¿Cuál es la definición más simple de "${topic}"?`,
+        options: ['Un concepto complejo de entender', `La base fundamental de ${topic}`, 'Algo que solo expertos usan', 'Una tecnología obsoleta'],
+        correctIndex: 1,
+        difficulty: 'basic',
+      },
+      {
+        question: `¿Qué necesitas saber antes de empezar con "${topic}"?`,
+        options: ['Nada, puedes empezar de cero', 'Ser experto en matemáticas', 'Tener 5 años de experiencia', 'Saber todos los lenguajes'],
+        correctIndex: 0,
+        difficulty: 'basic',
+      },
+      {
+        question: `¿Cuál de estas opciones describe mejor "${topic}"?`,
+        options: ['Un framework complejo', 'Un conjunto de herramientas y conceptos', 'Solo un lenguaje', 'Una base de datos'],
+        correctIndex: 1,
+        difficulty: 'basic',
+      },
+      {
+        question: `Al comenzar con "${topic}", ¿qué deberías hacer primero?`,
+        options: ['Leer documentación avanzada', 'Practicar con ejemplos simples', 'Construir un proyecto completo', 'Comparar con otras tecnologías'],
+        correctIndex: 1,
+        difficulty: 'basic',
+      },
+      {
+        question: `¿Qué recurso es más útil para un principiante en "${topic}"?`,
+        options: ['Artículos de investigación', 'Tutoriales paso a paso', 'Código de producción', 'Documentación técnica densa'],
+        correctIndex: 1,
+        difficulty: 'basic',
+      },
+    ];
+  }
+
+  // advanced
+  return [
     {
-      question: `¿Cuál es el primer paso recomendado para aprender "${topic}"?`,
-      options: ['Leer documentación avanzada', 'Entender los fundamentos', 'Crear un proyecto complejo', 'Ver videos sin práctica'],
+      question: `¿Cuál es una mala práctica común al trabajar con "${topic}"?`,
+      options: ['Seguir estándares establecidos', 'Ignorar el manejo de errores', 'Documentar el código', 'Hacer pruebas unitarias'],
       correctIndex: 1,
+      difficulty: 'advanced',
     },
     {
-      question: `¿Qué recurso es más útil al empezar con "${topic}"?`,
-      options: ['Foros de discusión', 'Tutoriales interactivos para principiantes', 'Código fuente de proyectos grandes', 'Artículos de investigación'],
+      question: `En "${topic}", ¿cómo optimizarías el rendimiento de una solución compleja?`,
+      options: ['Agregando más funcionalidades', 'Analizando cuellos de botella y aplicando patrones adecuados', 'Usando más memoria', 'Evitando el uso de herramientas'],
       correctIndex: 1,
+      difficulty: 'advanced',
     },
     {
-      question: `¿Cuál es una buena práctica al estudiar "${topic}"?`,
-      options: ['Solo leer teoría', 'Practicar con ejercicios pequeños', 'Memorizar sin entender', 'Evitar preguntar dudas'],
+      question: `Cuando trabajas en un proyecto grande con "${topic}", ¿qué estrategia de arquitectura recomendarías?`,
+      options: ['Sin planificación previa', 'Un diseño modular con separación de responsabilidades', 'Todo en un solo archivo', 'Copiar y pegar código'],
       correctIndex: 1,
+      difficulty: 'advanced',
     },
     {
-      question: `¿Qué herramienta usarías para aplicar "${topic}"?`,
-      options: ['Un bloc de notas', ['VS Code', 'un editor de código'].includes(lower) ? 'Un editor de código' : 'Un entorno de desarrollo adecuado', 'Solo papel y lápiz', 'Ninguna, solo teoría'],
+      question: `¿Qué enfoque usarías para depurar un problema complejo en "${topic}"?`,
+      options: ['Reiniciar todo', 'Aislar variables, revisar logs y usar herramientas de debugging', 'Ignorar el error', 'Reescribir todo desde cero'],
       correctIndex: 1,
+      difficulty: 'advanced',
     },
     {
-      question: `Después de aprender "${topic}", ¿qué deberías hacer?`,
-      options: ['Olvidarlo', 'Construir un proyecto personal', 'No volver a practicar', 'Solo ver más videos'],
+      question: `En un escenario de producción con "${topic}", ¿qué práctica es crítica?`,
+      options: ['No hacer respaldos', 'Implementar monitoreo, logging y pruebas automatizadas', 'Trabajar sin control de versiones', 'Hacer cambios directamente en producción'],
       correctIndex: 1,
+      difficulty: 'advanced',
     },
   ];
-  return questions;
 }
 
-export const generateTestQuestions = async (topic: string): Promise<TestQuestion[]> => {
+export const generateTestQuestions = async (
+  topic: string,
+  difficulty: 'basic' | 'advanced' = 'basic',
+  nodes?: RoadmapNode[],
+): Promise<TestQuestion[]> => {
+  const nodeContext = nodes && nodes.length > 0
+    ? `Los temas cubiertos en la ruta son: ${nodes.map((n) => n.data.label).join(', ')}. Descripciones: ${nodes.map((n) => n.data.description).join('; ')}.`
+    : '';
+
+  const systemPrompt = difficulty === 'basic'
+    ? `Eres un evaluador de conocimientos. Genera 5 preguntas de opción múltiple de NIVEL BÁSICO a INTERMEDIO sobre el tema solicitado. Las preguntas deben evaluar fundamentos, definiciones y conceptos esenciales. ${nodeContext} Responde SOLO con un array JSON donde cada elemento tiene: question (string), options (array de 4 strings), correctIndex (number 0-3).`
+    : `Eres un evaluador de conocimientos. Genera 5 preguntas de opción múltiple de NIVEL AVANZADO sobre el tema solicitado. Las preguntas deben evaluar optimización, arquitectura, buenas prácticas y resolución de problemas complejos. ${nodeContext} Responde SOLO con un array JSON donde cada elemento tiene: question (string), options (array de 4 strings), correctIndex (number 0-3).`;
+
   try {
     if (!XAI_API_KEY || XAI_API_KEY === 'undefined' || XAI_API_KEY === '') {
-      return generateTestMock(topic);
+      return generateTestMock(topic, difficulty, nodes);
     }
     const response = await fetch(XAI_API_URL, {
       method: 'POST',
@@ -183,23 +236,20 @@ export const generateTestQuestions = async (topic: string): Promise<TestQuestion
       body: JSON.stringify({
         model: 'grok-2-latest',
         messages: [
-          {
-            role: 'system',
-            content: 'Eres un evaluador de conocimientos. Genera 5 preguntas de opción múltiple sobre el tema solicitado. Responde SOLO con un array JSON donde cada elemento tiene: question (string), options (array de 4 strings), correctIndex (number 0-3).',
-          },
-          { role: 'user', content: topic },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `${topic}${nodeContext ? `\n\nContexto de la ruta:\n${nodeContext}` : ''}` },
         ],
       }),
     });
-    if (!response.ok) return generateTestMock(topic);
+    if (!response.ok) return generateTestMock(topic, difficulty, nodes);
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    if (!content) return generateTestMock(topic);
+    if (!content) return generateTestMock(topic, difficulty, nodes);
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    return generateTestMock(topic);
+    return generateTestMock(topic, difficulty, nodes);
   } catch {
-    return generateTestMock(topic);
+    return generateTestMock(topic, difficulty, nodes);
   }
 };
 

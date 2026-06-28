@@ -314,7 +314,7 @@ const surveyStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'Outfit_400Regular', fontSize: 26,
+    fontSize: 26,
     fontFamily: 'Outfit_800ExtraBold',
     color: '#ffffff',
     letterSpacing: -0.5,
@@ -326,7 +326,7 @@ const surveyStyles = StyleSheet.create({
     lineHeight: 22,
   },
   label: {
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
     color: '#ffffff',
     marginBottom: 12,
@@ -355,7 +355,7 @@ const surveyStyles = StyleSheet.create({
     backgroundColor: 'rgba(139, 92, 246, 0.05)',
   },
   optionText: {
-    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontSize: 13,
     color: '#cbd5e1',
     fontFamily: 'Outfit_600SemiBold',
     textAlign: 'center',
@@ -466,7 +466,7 @@ const surveyStyles = StyleSheet.create({
   },
   skipText: {
     color: '#f8fafc',
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
   },
   submitGradient: {
@@ -479,7 +479,7 @@ const surveyStyles = StyleSheet.create({
   },
   submitText: {
     color: '#ffffff',
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
   },
 });

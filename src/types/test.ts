@@ -2,6 +2,7 @@ export interface TestQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  difficulty?: 'basic' | 'advanced';
 }
 
 export interface TestResult {
@@ -12,4 +13,5 @@ export interface TestResult {
   score: number;
   total: number;
   timestamp: string;
+  difficulty: 'basic' | 'advanced';
 }

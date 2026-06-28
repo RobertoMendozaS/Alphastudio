@@ -11,9 +11,10 @@ interface TestModalProps {
   questions: TestQuestion[];
   onSubmit: (result: TestResult) => void;
   onSkip: () => void;
+  testType?: 'pre' | 'post';
 }
 
-export default function TestModal({ visible, title, questions, onSubmit, onSkip }: TestModalProps) {
+export default function TestModal({ visible, title, questions, onSubmit, onSkip, testType = 'pre' }: TestModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
@@ -32,7 +33,8 @@ export default function TestModal({ visible, title, questions, onSubmit, onSkip 
       const correct = answers.filter((a, i) => a === questions[i].correctIndex).length;
       const result: TestResult = {
         topic: title,
-        type: 'pre',
+        type: testType,
+        difficulty: testType === 'pre' ? 'basic' : 'advanced',
         questions,
         answers,
         score: correct,
@@ -49,7 +51,8 @@ export default function TestModal({ visible, title, questions, onSubmit, onSkip 
     const correct = answers.filter((a, i) => a === questions[i].correctIndex).length;
     const result: TestResult = {
       topic: title,
-      type: 'pre',
+      type: testType,
+      difficulty: testType === 'pre' ? 'basic' : 'advanced',
       questions,
       answers,
       score: correct,

@@ -35,7 +35,7 @@ export default function AlphaLogo() {
           marginBottom: 18,
         }}
       >
-        <Text style={{ color: '#fff', fontFamily: 'Outfit_400Regular', fontSize: 34, fontFamily: 'Outfit_900Black' }}>α</Text>
+        <Text style={{ color: '#fff', fontSize: 34, fontFamily: 'Outfit_900Black' }}>α</Text>
       </LinearGradient>
     </Animated.View>
   );

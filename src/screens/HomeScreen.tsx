@@ -4,7 +4,7 @@ import {
   Animated, Easing, ActivityIndicator, Platform, StatusBar, Alert,
 } from 'react-native';
 import { supabase } from '../services/supabaseClient';
-import { generateRoadmap } from '../services/aiService';
+import { generateRoadmap, generateTestQuestions } from '../services/aiService';
 import { Ionicons } from '@expo/vector-icons';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AlphaLogo from '../components/AlphaLogo';
 import { SkeletonHistoryCard } from '../screens/SkeletonComponents';
 import SurveyModal from '../components/SurveyModal';
+import TestModal from '../components/TestModal';
 import { useToast } from '../components/ToastProvider';
 
 type Props = CompositeScreenProps<
@@ -34,9 +35,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [preTestQuestions, setPreTestQuestions] = useState<any[]>([]);
+  const [showPreTest, setShowPreTest] = useState(false);
   const [pendingRoadmap, setPendingRoadmap] = useState<any>(null);
   const { recentTopics, setCurrentRoadmap } = useRoadmapStore();
-  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, clearRecentTopics } = useRoadmapStore();
+  const { loadRecentTopics, saveRecentTopic, saveRoadmapToHistory, saveSurveyResponse, saveAndSyncTestResult, clearRecentTopics } = useRoadmapStore();
   const { showToast } = useToast();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -96,9 +99,15 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
-  const handleSurveySubmit = async (response: any) => {
-    await saveSurveyResponse(response);
-    setShowSurvey(false);
+  const handlePreTestSubmit = async (result: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await saveAndSyncTestResult(result, session.user.id);
+    } else {
+      const { saveTestResult } = useRoadmapStore.getState();
+      await saveTestResult(result);
+    }
+    setShowPreTest(false);
     if (pendingRoadmap) {
       setTimeout(() => {
         cleanupWebModal();
@@ -108,8 +117,8 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
-  const handleSurveySkip = () => {
-    setShowSurvey(false);
+  const handlePreTestSkip = () => {
+    setShowPreTest(false);
     if (pendingRoadmap) {
       setTimeout(() => {
         cleanupWebModal();
@@ -117,6 +126,24 @@ export default function HomeScreen({ navigation }: Props) {
         setPendingRoadmap(null);
       }, 300);
     }
+  };
+
+  const handleSurveySubmit = async (response: any) => {
+    await saveSurveyResponse(response);
+    setShowSurvey(false);
+    const questions = await generateTestQuestions(query, 'basic');
+    setPreTestQuestions(questions);
+    setShowPreTest(true);
+  };
+
+  const handleSurveySkip = () => {
+    setShowSurvey(false);
+    const openTest = async () => {
+      const questions = await generateTestQuestions(query, 'basic');
+      setPreTestQuestions(questions);
+      setShowPreTest(true);
+    };
+    openTest();
   };
 
   const selectTopic = (topic: string) => {
@@ -229,6 +256,14 @@ export default function HomeScreen({ navigation }: Props) {
         onSubmit={handleSurveySubmit}
         onSkip={handleSurveySkip}
       />
+      <TestModal
+        visible={showPreTest}
+        title={query}
+        questions={preTestQuestions}
+        onSubmit={handlePreTestSubmit}
+        onSkip={handlePreTestSkip}
+        testType="pre"
+      />
     </View>
   );
 }
@@ -246,7 +281,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontFamily: 'Outfit_400Regular', fontSize: 32,
+    fontSize: 32,
     fontFamily: 'Outfit_800ExtraBold',
     color: '#ffffff',
     marginBottom: 8,
@@ -287,7 +322,7 @@ const styles = StyleSheet.create({
   },
   generateBtnText: {
     color: '#fff',
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
   },
   topicsSection: {
@@ -318,7 +353,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: '#e2e8f0',
-    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontSize: 13,
     fontFamily: 'Outfit_500Medium',
   },
   skeletonContainer: {

@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 24,
+    fontSize: 24,
     fontFamily: 'Outfit_800ExtraBold',
     color: '#f8fafc',
     letterSpacing: -0.5,
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   userName: {
-    fontFamily: 'Outfit_400Regular', fontSize: 20,
+    fontSize: 20,
     fontFamily: 'Outfit_700Bold',
     color: '#f8fafc',
     marginBottom: 4,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     borderColor: '#3b2c6b',
   },
   badgeText: {
-    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    fontSize: 12,
     fontFamily: 'Outfit_700Bold',
     color: '#0ea5e9',
   },
@@ -640,13 +640,13 @@ const styles = StyleSheet.create({
     borderColor: '#3b2c6b',
   },
   statValue: {
-    fontFamily: 'Outfit_400Regular', fontSize: 22,
+    fontSize: 22,
     fontFamily: 'Outfit_800ExtraBold',
     color: '#f8fafc',
     marginBottom: 2,
   },
   statLabel: {
-    fontFamily: 'Outfit_400Regular', fontSize: 12,
+    fontSize: 12,
     color: '#a78bfa',
     fontFamily: 'Outfit_500Medium',
   },
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   badgesSectionTitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
     color: '#f8fafc',
     marginHorizontal: 20,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   badgeName: {
-    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontSize: 13,
     fontFamily: 'Outfit_700Bold',
     color: '#f8fafc',
     textAlign: 'center',
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   streakCount: {
-    fontFamily: 'Outfit_400Regular', fontSize: 44,
+    fontSize: 44,
     fontFamily: 'Outfit_900Black',
     color: '#f97316',
     marginTop: 6,
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
   },
   surveyBadgeText: {
     color: '#fff',
-    fontFamily: 'Outfit_400Regular', fontSize: 11,
+    fontSize: 11,
     fontFamily: 'Outfit_700Bold',
   },
   modalOverlay: {
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: '#f8fafc',
-    fontFamily: 'Outfit_400Regular', fontSize: 17,
+    fontSize: 17,
     fontFamily: 'Outfit_700Bold',
     marginBottom: 16,
     textAlign: 'center',

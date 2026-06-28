@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     borderColor: '#3b2c6b',
   },
   emptyTitle: {
-    fontFamily: 'Outfit_400Regular', fontSize: 16,
+    fontSize: 16,
     fontFamily: 'Outfit_700Bold',
     color: '#f8fafc',
     marginBottom: 8,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   emptyBtnText: {
     color: '#fff',
-    fontFamily: 'Outfit_400Regular', fontSize: 13,
+    fontSize: 13,
     fontFamily: 'Outfit_600SemiBold',
   },
 });
